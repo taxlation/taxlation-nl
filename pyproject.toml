@@ -1,0 +1,18 @@
+[project]
+name = "taxlation-nl"
+version = "0.1.0"
+description = "Translation of dutch tax regulation into code."
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "dataclasses>=0.8",
+    "datetime>=6.0",
+    "python-dateutil>=2.9.0.post0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/taxlation"]
