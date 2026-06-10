@@ -1,5 +1,10 @@
+#import dataclasses module
 from dataclasses import dataclass
+
+#import datetime module
 from datetime import date, timedelta
+
+#import relativedelta module
 from dateutil.relativedelta import relativedelta
 
 @dataclass
@@ -7,44 +12,55 @@ class Art_4:
   """
   Dataclass voor Art. 4 Algemene termijnenwet
   """
-  startDatum: date # startdatum
-  wettelijkeTermijn: timedelta # in een wet gestelde termijn
-  wettelijkeTermijnEenheid: str # Eenheid van de in een wet gestelde termijn (uur, dag, week, maand, jaar)
-  verlengingTermijn: timedelta = timedelta(days=0) # verlenging van termijn
+  einddatum_wettelijke_termijn: date # einddatum van een in de wet gestelde termijn
+  wettelijke_termijn: timedelta # in een wet gestelde termijn
+  wettelijke_termijn_eenheid: str # eenheid van de in een wet gestelde termijn (uur, dag, week, maand, jaar)
+  verlenging_termijn: timedelta = timedelta(days=0) # verlenging van een in de wet gestelde termijn
 
   def __post_init__(self):
     self.onderdeel_a()
-    self._applies = self.onderdeel_a()
+    self.wet_geldt_niet
+    
+  @property   
+  def wet_geldt_niet(self) -> bool:
+    """
+      Laat verlengde termijnen niet van toepassing zijn indien onderdeel a van toepassing is.
+
+      Geeft terug:
+        bool: False als wet geldt voor de termijn.
+      """
+    if (self.onderdeel_a() == True):
+      self.verlenging_termijn = timedelta(days=0)
+      return True
+    else:
+      return False
 
   @property
-  def einddatum(self):
+  def einddatum_verlengde_termijn(self):
     """
-    Berekent de einddatum van de gestelde termijn.
+    Berekent de einddatum van de verlengde termijn.
 
     Functie telt het wettelijke termijn en de eventuele verlenging op bij de startdatum.
 
     Geeft terug:
       datetime.date: De einddatum met inachtneming van de wettelijke termijn en verlenging.
     """
-    return self.startDatum + self.wettelijkeTermijn + self.verlengingTermijn
+    return self.einddatum_wettelijke_termijn + self.verlenging_termijn
 
-  @property
-  def applies(self) -> bool:
-      return self._applies
-  
   def onderdeel_a(self) -> bool:
       """
-      Laat verlengde termijnen niet van toepassing zijn indien de wettelijke termijn specifiek is geformuleerd.
+      Onderdeel is van toepassing indien de wettelijke termijn specifiek is geformuleerd.
       
-      Returns:
-        bool: True if Art. 4 applies (no extensions allowed)
+      Geeft terug:
+        bool: True als onderdeel van toepassing is.
       """
-      if ((self.wettelijkeTermijnEenheid == 'uur') or
-        (self.wettelijkeTermijn > timedelta(days=90) and self.wettelijkeTermijnEenheid == 'dag') or
-        (self.wettelijkeTermijn > timedelta(weeks=12) and self.wettelijkeTermijnEenheid == 'week') or
-        (self.wettelijkeTermijn > (self.startDatum + relativedelta(months=1) - self.startDatum) and self.wettelijkeTermijnEenheid == 'maand') or
-        (self.wettelijkeTermijn >= (self.startDatum + relativedelta(year=12) - self.startDatum) and self.wettelijkeTermijnEenheid == 'jaar')
+      startdatum_wettelijke_termijn = self.einddatum_wettelijke_termijn - self.wettelijke_termijn
+      if ((self.wettelijke_termijn_eenheid == 'uur') or
+        (self.wettelijke_termijn > timedelta(days=90) and self.wettelijke_termijn_eenheid == 'dag') or
+        (self.wettelijke_termijn > timedelta(weeks=12) and self.wettelijke_termijn_eenheid == 'week') or
+        (self.wettelijke_termijn > (startdatum_wettelijke_termijn + relativedelta(months=3) - startdatum_wettelijke_termijn) and self.wettelijke_termijn_eenheid == 'maand') or
+        (self.wettelijke_termijn >= (startdatum_wettelijke_termijn + relativedelta(year=1) - startdatum_wettelijke_termijn) and self.wettelijke_termijn_eenheid == 'jaar')
       ):
-        self.verlengingTermijn = timedelta(days=0)
         return True
-      return False
+      else:
+        return False

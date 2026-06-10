@@ -1,5 +1,10 @@
+#import datackasses module
 from dataclasses import dataclass
+
+#import datetime module
 from datetime import date, timedelta
+
+#import Art_3 dataclass
 from taxlation.nl.atw.art_3.translation import Art_3
 
 @dataclass
@@ -7,24 +12,24 @@ class Art_2:
   """
   Dataclass voor Art. 2 Algemene termijnenwet
   """
-  startDatum: date # startdatum
-  wettelijkeTermijn: timedelta # in een wet gestelde termijn
-  verlengingTermijn: timedelta = timedelta(days=0) # verlenging van termijn
-  
+  einddatum_wettelijke_termijn: date # einddatum van een in de wet gestelde termijn
+  wettelijke_termijn: timedelta # in een wet gestelde termijn
+  verlenging_termijn: timedelta = timedelta(days=0) # verlenging van een in de wet gestelde termijn
+ 
   def __post_init__(self):
     self.art_2()
 
   @property
-  def einddatum(self):
+  def einddatum_verlengde_termijn(self):
     """
-    Berekent de einddatum van de gestelde termijn.
+    Berekent de einddatum van de wettelijke termijn met inachtneming van verlenging van de termijn.
 
-    Functie telt het wettelijke termijn en de eventuele verlenging op bij de startdatum.
+    Functie telt de eventuele verlenging op bij de einddatum van de wettelijke termijn.
 
     Geeft terug:
-      date: De einddatum met inachtneming van de wettelijke termijn en verlenging.
+      date: De einddatum met inachtneming van de verlenging.
     """
-    return self.startDatum + self.wettelijkeTermijn + self.verlengingTermijn
+    return self.einddatum_wettelijke_termijn + self.verlenging_termijn
 
   def art_2(self):
     """
@@ -36,18 +41,20 @@ class Art_2:
     Geeft terug:
      timedelta: De verlenging van de termijn.
     """
-    if (self.einddatum - self.startDatum) >= timedelta(days=3):
-      huidige_datum = self.startDatum
-      werk_dagen = 0
+    if (self.wettelijke_termijn >= timedelta(days=3)):
+      startdatum_wettelijke_termijn = self.einddatum_wettelijke_termijn - self.wettelijke_termijn + timedelta(days=1)
+      huidige_datum = startdatum_wettelijke_termijn
+      werkdagen = 0
 
-      while (huidige_datum <= self.einddatum):
+      while (huidige_datum <= self.einddatum_wettelijke_termijn):
         if huidige_datum.weekday() < 5 and huidige_datum not in Art_3:
-          werk_dagen += 1
+          werkdagen += 1
         huidige_datum += timedelta(days=1)
 
-      while werk_dagen < 2:
-        self.verlengingTermijn += timedelta(days=1)
-        if self.einddatum.weekday() < 5  and self.einddatum not in Art_3:
-          werk_dagen +=1
+      while werkdagen < 2:
+        self.verlenging_termijn += timedelta(days=1)
 
-      return self.verlengingTermijn
+        if self.einddatum_verlengde_termijn.weekday() < 5  and self.einddatum_verlengde_termijn not in Art_3:
+          werkdagen +=1
+      
+      return self.verlenging_termijn

@@ -1,5 +1,4 @@
 # make dataclasses directly available for atw
-
 from .art_1 import Art_1
 from .art_2 import Art_2
 from .art_3 import Art_3
