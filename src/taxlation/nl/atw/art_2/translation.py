@@ -1,4 +1,4 @@
-#import datackasses module
+#import dataclasses module
 from dataclasses import dataclass
 
 #import datetime module
