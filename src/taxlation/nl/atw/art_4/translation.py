@@ -12,7 +12,7 @@ class Art_4:
   """
   Dataclass voor Art. 4 Algemene termijnenwet
   """
-  einddatum_wettelijke_termijn: date # einddatum van een in de wet gestelde termijn
+  datum_einde_wettelijke_termijn: date # einddatum van een in de wet gestelde termijn
   wettelijke_termijn: timedelta # in een wet gestelde termijn
   wettelijke_termijn_eenheid: str # eenheid van de in een wet gestelde termijn (uur, dag, week, maand, jaar)
   verlenging_termijn: timedelta = timedelta(days=0) # verlenging van een in de wet gestelde termijn
@@ -36,16 +36,16 @@ class Art_4:
       return False
 
   @property
-  def einddatum_verlengde_termijn(self):
+  def datum_einde_verlengde_termijn(self):
     """
     Berekent de einddatum van de verlengde termijn.
 
-    Functie telt het wettelijke termijn en de eventuele verlenging op bij de startdatum.
+    Functie telt de eventuele verlenging op bij de einddatum van de wettelijke termijn.
 
     Geeft terug:
       datetime.date: De einddatum met inachtneming van de wettelijke termijn en verlenging.
     """
-    return self.einddatum_wettelijke_termijn + self.verlenging_termijn
+    return self.datum_einde_wettelijke_termijn + self.verlenging_termijn
 
   def onderdeel_a(self) -> bool:
       """
@@ -54,12 +54,12 @@ class Art_4:
       Geeft terug:
         bool: True als onderdeel van toepassing is.
       """
-      startdatum_wettelijke_termijn = self.einddatum_wettelijke_termijn - self.wettelijke_termijn
+      datum_start_wettelijke_termijn = self.datum_einde_wettelijke_termijn - self.wettelijke_termijn
       if ((self.wettelijke_termijn_eenheid == 'uur') or
         (self.wettelijke_termijn > timedelta(days=90) and self.wettelijke_termijn_eenheid == 'dag') or
         (self.wettelijke_termijn > timedelta(weeks=12) and self.wettelijke_termijn_eenheid == 'week') or
-        (self.wettelijke_termijn > (startdatum_wettelijke_termijn + relativedelta(months=3) - startdatum_wettelijke_termijn) and self.wettelijke_termijn_eenheid == 'maand') or
-        (self.wettelijke_termijn >= (startdatum_wettelijke_termijn + relativedelta(year=1) - startdatum_wettelijke_termijn) and self.wettelijke_termijn_eenheid == 'jaar')
+        (self.wettelijke_termijn > (datum_start_wettelijke_termijn + relativedelta(months=3) - datum_start_wettelijke_termijn) and self.wettelijke_termijn_eenheid == 'maand') or
+        (self.wettelijke_termijn >= (datum_start_wettelijke_termijn + relativedelta(year=1) - datum_start_wettelijke_termijn) and self.wettelijke_termijn_eenheid == 'jaar')
       ):
         return True
       else:

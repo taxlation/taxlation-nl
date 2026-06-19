@@ -4,13 +4,12 @@
 
 ### Art. 4
 **Properties**
-- _einddatum_wettelijke_termijn_: Einddatum van een in de wet gestelde termijn (date).
+- _datum_einde_wettelijke_termijn_: Einddatum van een in de wet gestelde termijn (date).
 - _wettelijke_termijn_: In een wet gestelde termijn (timedelta).
-- wettelijke_termijn_eenheid: In een wet gestelde termijn (string).
+- _wettelijke_termijn_eenheid_: In een wet gestelde termijn (string).
 - _verlenging_termijn_: Nieuw te berekenen verlenging van de termijn (timedelta).
-- _eindDatum_: Nieuw te berekenen einddatum (date).
 - _wet_geldt_niet_: Nieuw te bepalen antwoord op de vraag of wet niet van toepassing is (bool).
-- _einddatum_verlengde_termijn_: Nieuw te berekenen einddatum van een in de wet gestelde termijn met inachtneming van eventuele verlenging (date).
+- _datum_einde_verlengde_termijn_: Nieuw te berekenen einddatum van een in de wet gestelde termijn met inachtneming van eventuele verlenging (date).
 
 
 **Methods**
