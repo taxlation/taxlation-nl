@@ -12,6 +12,10 @@ class Art_6_7:
   datum_aanvang_indieningstermijn: date  # datum waarop indieningstermijn aanvangt
 
   @property
+  def indieningstermijn(self):
+    return timedelta(weeks=6)
+
+  @property
   def datum_einde_indieningstermijn(self):
     """
     Berekent de einddatum van de indieningstermijn.
@@ -21,4 +25,4 @@ class Art_6_7:
     Geeft terug:
       datetime.date: De datum waarop de indieningstermijn eindigt.
     """
-    return self.datum_aanvang_indieningstermijn + timedelta(weeks=6) - timedelta(days=1)
+    return self.datum_aanvang_indieningstermijn + self.indieningstermijn - timedelta(days=1)
