@@ -1,7 +1,7 @@
 # atw - artikel 1
 
 ## Classes
-### Art_1
+### Artikel 1
 **Properties**
 - _datum_einde_termijn_: Einddatum van een in de wet gestelde termijn (date).
 - _wettelijke_termijn_: In een wet gestelde termijn (timedelta).

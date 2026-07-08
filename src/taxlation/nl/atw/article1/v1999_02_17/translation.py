@@ -5,12 +5,12 @@ from dataclasses import dataclass
 from datetime import date, timedelta
 
 #import Art_3 dataclass
-from taxlation.nl.atw.art_3 import Art_3
+from taxlation.nl.atw.article3 import Artikel3
 
 @dataclass
-class Art_1: 
+class Artikel1: 
   """
-  Dataclass voor Art. 1 Algemene termijnenwet
+  Dataclass voor Artikel 1 Algemene termijnenwet
   """
   datum_einde_wettelijke_termijn: date # einddatum van een in de wet gestelde termijn
   wettelijke_termijn: timedelta # in een wet gestelde termijn
@@ -42,7 +42,7 @@ class Art_1:
     Geeft terug:
       datetime.date: De eventueel verlengde termijn met inachtneming van artikel 1, lid 1, ATW.
     """
-    while self.datum_einde_verlengde_termijn.weekday() >= 5 or self.datum_einde_verlengde_termijn in Art_3:
+    while self.datum_einde_verlengde_termijn.weekday() >= 5 or self.datum_einde_verlengde_termijn in Artikel3():
       self.verlenging_termijn += timedelta(days=1)
     
     return self.verlenging_termijn

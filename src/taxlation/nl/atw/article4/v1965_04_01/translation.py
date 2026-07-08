@@ -8,7 +8,7 @@ from datetime import date, timedelta
 from dateutil.relativedelta import relativedelta
 
 @dataclass
-class Art_4: 
+class Artikel4: 
   """
   Dataclass voor Art. 4 Algemene termijnenwet
   """

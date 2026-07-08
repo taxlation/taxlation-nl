@@ -1,7 +1,7 @@
 #import datetime module
 from datetime import date
 
-Art_3 = [
+Artikel3 = [
   date(2025, 1, 1), # Nieuwjaarsdag: woensdag 1 januari 2025 (lid 1)
   date(2025, 4, 21), # Tweede Paasdag: maandag 21 april 2025 (lid 1)
   date(2025, 5, 9), # Tweede Pinksterdag: maandag 25 mei 2025 (lid 1)
