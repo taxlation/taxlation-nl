@@ -1,4 +1,7 @@
+from contextvars import ContextVar
 from datetime import date
+
+context_reference_date: ContextVar[date | None]= ContextVar('_reference_date', default= None)
 
 class VersionedClass:
   """Selects the right version of an article class"""
@@ -8,8 +11,7 @@ class VersionedClass:
       self._versions = dict(sorted(versions.items()))
 
   def __call__(self,*, reference_date: date | None = None, **kwargs):
-    reference_date = reference_date or date.today()
-
+    reference_date = reference_date or context_reference_date.get() or date.today()
     apply_dataclass  = None
 
     for effective_date, dataclass in self._versions.items():
@@ -24,6 +26,10 @@ class VersionedClass:
     if not callable(apply_dataclass):
       return apply_dataclass
     
-    return apply_dataclass(**kwargs)
+    token = context_reference_date.set(reference_date)
+    try:
+      return apply_dataclass(**kwargs)
+    finally:
+      context_reference_date.reset(token)
 
 
