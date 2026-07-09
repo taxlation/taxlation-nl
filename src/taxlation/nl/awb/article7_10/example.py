@@ -5,7 +5,7 @@ from datetime import date, timedelta
 from taxlation.nl import awb
 
 # Voorbeeld los gebruik van Art_7_10: einddatum bezwaartermijn 2021-08-13 met verzoek herstel 2021-09-01
-art_7_10_voorbeeld= awb.Art_7_10(
+art_7_10_voorbeeld= awb.Artikel7_10(
   datum_einde_bezwaartermijn= date(2021,8,13),
   commissie_ingesteld= False,
   datum_verzoek_verzuim = date(2021,9,1),
