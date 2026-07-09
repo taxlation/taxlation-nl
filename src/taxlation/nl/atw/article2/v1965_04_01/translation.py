@@ -47,14 +47,14 @@ class Artikel2:
       werkdagen = 0
 
       while (huidige_datum <= self.datum_einde_wettelijke_termijn):
-        if huidige_datum.weekday() < 5 and huidige_datum not in Artikel3():
+        if huidige_datum.weekday() < 5 and huidige_datum not in Artikel3(jaar=huidige_datum.year).algemeen_erkende_feestdagen:
           werkdagen += 1
         huidige_datum += timedelta(days=1)
 
       while werkdagen < 2:
         self.verlenging_termijn += timedelta(days=1)
 
-        if self.datum_einde_verlengde_termijn.weekday() < 5  and self.datum_einde_verlengde_termijn not in Artikel3():
+        if self.datum_einde_verlengde_termijn.weekday() < 5  and self.datum_einde_verlengde_termijn not in Artikel3(jaar=self.datum_einde_verlengde_termijn.year).algemeen_erkende_feestdagen:
           werkdagen +=1
       
       return self.verlenging_termijn

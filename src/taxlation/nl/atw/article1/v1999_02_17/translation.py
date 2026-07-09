@@ -42,7 +42,7 @@ class Artikel1:
     Geeft terug:
       datetime.date: De eventueel verlengde termijn met inachtneming van artikel 1, lid 1, ATW.
     """
-    while self.datum_einde_verlengde_termijn.weekday() >= 5 or self.datum_einde_verlengde_termijn in Artikel3():
+    while self.datum_einde_verlengde_termijn.weekday() >= 5 or self.datum_einde_verlengde_termijn in Artikel3(jaar= self.datum_einde_wettelijke_termijn.year).algemeen_erkende_feestdagen:
       self.verlenging_termijn += timedelta(days=1)
     
     return self.verlenging_termijn
