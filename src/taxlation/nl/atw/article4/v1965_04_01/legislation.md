@@ -1,7 +1,7 @@
 ---
 identifier: "BWBR0002448"
-citeertitel: "Wet op belastingen van rechtsverkeer"
-bwb-ng-variabel-deel: "/Artikel3"
+citeertitel: "Algemene termijnenwet"
+bwb-ng-variabel-deel: "/Artikel4"
 inwerking: "1965-04-01" 
 ---
 <kop>

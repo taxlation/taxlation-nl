@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from datetime import date, timedelta
 
 @dataclass
-class Art_7_10:
+class Artikel7_10:
   """
   Dataclass voor Art. 7:10 Algemene wet bestuursrecht
   """

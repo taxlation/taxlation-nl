@@ -1,6 +1,6 @@
 ---
 identifier: "BWBR0002448"
-citeertitel: "Wet op belastingen van rechtsverkeer"
+citeertitel: "Algemene termijnenwet"
 bwb-ng-variabel-deel: "/Artikel3"
 inwerking: "1982-03-31" 
 ---
