@@ -64,9 +64,11 @@ class Artikel3:
       list[date]
     """
     holidays_nl = holidays.NL(years= self.jaar, language='nl')
+    datum_goede_vrijdag= []
     for dag, naam_dag in holidays_nl.items():
       if (naam_dag == "Goede Vrijdag"):
-        return [dag]
+        datum_goede_vrijdag.append(dag)
+    return datum_goede_vrijdag
       
   def lid_3(self):
     """
