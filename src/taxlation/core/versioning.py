@@ -1,7 +1,10 @@
 from contextvars import ContextVar
-from datetime import date
+from datetime import date 
+
+from taxlation.core.exceptions import VersionNotFoundError
 
 context_reference_date: ContextVar[date | None]= ContextVar('_reference_date', default= None)
+
 
 class VersionedClass:
   """Selects the right version of an article class"""
@@ -21,7 +24,7 @@ class VersionedClass:
         break
 
     if apply_dataclass is None:
-      raise ValueError(f"No version from {self._name} on {reference_date}")
+      raise VersionNotFoundError(f"No version from {self._name} on {reference_date}")
     
     if not callable(apply_dataclass):
       return apply_dataclass

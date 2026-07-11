@@ -4,7 +4,7 @@ from datetime import date, timedelta
 from taxlation.nl import atw
 
 # voorbeeld gebruik van Art_1
-art_1_voorbeeld= atw.Artikel1(datum_toepassing= date(1999,2,17) ,datum_einde_wettelijke_termijn= date(2021,9,25), wettelijke_termijn= timedelta(weeks=6))
+art_1_voorbeeld= atw.Artikel1(datum_toepassing= date(1998,2,17) ,datum_einde_wettelijke_termijn= date(2021,9,25), wettelijke_termijn= timedelta(weeks=6))
 
 print(art_1_voorbeeld)
 print("Verlenging van termijn met Art_1", art_1_voorbeeld.verlenging_termijn) # verlenging termijn met 2 dagen

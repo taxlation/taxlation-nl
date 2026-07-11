@@ -1,0 +1,2 @@
+class VersionNotFoundError(ValueError):
+  pass
