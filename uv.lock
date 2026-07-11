@@ -25,6 +25,18 @@ wheels = [
 ]
 
 [[package]]
+name = "holidays"
+version = "0.100"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "python-dateutil" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/19/65/4bec113c00c42fb8d6d71a816774a97d009c8f1341a70ecb6a9ba96176bb/holidays-0.100.tar.gz", hash = "sha256:76e963cd17758ba0e0519daff725f676eaebeda71e500cd235f647307be31e31", size = 949733, upload-time = "2026-07-06T21:15:34.947Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/78/86/4eab0e2339cf09cfd00233073f5fa37810ceacbff5db5133e26aaa610255/holidays-0.100-py3-none-any.whl", hash = "sha256:cf67e8983c3af182b62081be27c965c6fdf41377026aa62ac82d1bbc8c7ebd8f", size = 1529449, upload-time = "2026-07-06T21:15:32.949Z" },
+]
+
+[[package]]
 name = "python-dateutil"
 version = "2.9.0.post0"
 source = { registry = "https://pypi.org/simple" }
@@ -61,6 +73,7 @@ source = { editable = "." }
 dependencies = [
     { name = "dataclasses" },
     { name = "datetime" },
+    { name = "holidays" },
     { name = "python-dateutil" },
 ]
 
@@ -68,6 +81,7 @@ dependencies = [
 requires-dist = [
     { name = "dataclasses", specifier = ">=0.8" },
     { name = "datetime", specifier = ">=6.0" },
+    { name = "holidays", specifier = ">=0.100" },
     { name = "python-dateutil", specifier = ">=2.9.0.post0" },
 ]
 
