@@ -1,6 +1,5 @@
 #import datetime module
-from datetime import date
-import holidays
+from datetime import date, timedelta
 
 #import dataclasses module
 from dataclasses import dataclass
@@ -28,7 +27,7 @@ class Artikel3:
 
     return sorted(lijst_algemeen_erkende_feestdagen)
 
-  def lid_1(self):
+  def lid_1(self) -> list[date]:
     """
     Maakt een lijst van algemeen erkende feestdagen genoemd in lid_1
 
@@ -37,24 +36,21 @@ class Artikel3:
     Geeft terug:
       list[date]
     """
-    lijst_feestdagen = []
-    holidays_nl = holidays.NL(years= self.jaar, language='nl')
-    for dag, naam_dag in holidays_nl.items():
-      if (
-        naam_dag == "Nieuwjaarsdag" or 
-        naam_dag == "Tweede paasdag" or 
-        naam_dag == "Tweede Pinksterdag" or 
-        naam_dag == "Eerste Kerstdag" or
-        naam_dag == "Tweede Kerstdag" or
-        naam_dag == "Hemelvaartsdag" or
-        naam_dag == "Koningsdag" or
-        dag  == date(self.jaar,5,5)
-        ):
-        lijst_feestdagen.append(dag)
-    
-    return lijst_feestdagen
+    eerste_paasdag = self._bereken_eerste_paasdag()
+    koningsdag = self._bereken_koningsdag()
 
-  def lid_2(self):
+    return [
+      date(self.jaar, 1, 1), # Nieuwjaarsdag
+      eerste_paasdag + timedelta(days=1), # Tweede Paasdag
+      eerste_paasdag + timedelta(days=50), # Tweede Pinksterdag
+      date(self.jaar, 12, 25), # Eerste Kerstdag
+      date(self.jaar, 12, 26), # Tweede Kerstdag
+      eerste_paasdag + timedelta(days=39), # Hemelvaartsdag
+      koningsdag, # Koningsdag
+      date(self.jaar, 5, 5) # vijfde mei
+    ]
+
+  def lid_2(self) -> list[date]:
     """
     Achterhaalt de dag van Goede Vrijdag genoemd in lid_1.
 
@@ -63,14 +59,11 @@ class Artikel3:
     Geeft terug:
       list[date]
     """
-    holidays_nl = holidays.NL(years= self.jaar, language='nl')
-    datum_goede_vrijdag= []
-    for dag, naam_dag in holidays_nl.items():
-      if (naam_dag == "Goede Vrijdag"):
-        datum_goede_vrijdag.append(dag)
-    return datum_goede_vrijdag
+    eerste_paasdag = self._bereken_eerste_paasdag()
+
+    return [eerste_paasdag - timedelta(days=2)]
       
-  def lid_3(self):
+  def lid_3(self) -> list[date]:
     """
     Achterhaalt de dagen gelijkgesteld met de algemeen erkende feestdagen.
 
@@ -81,7 +74,7 @@ class Artikel3:
     """
     lijst_gelijkstelling_feestdagen = [
       date(2023,4,28), date(2023,5,19), date(2024,5,10), date(2024,12,27), date(2025,5,30), # Besluit gelijkstelling van 28 april 2023, 19 mei 2023, 10 mei 2024, 27 december 2024 en 30 mei 2025 met een algemeen erkende feestdag
-      date(2026,2,2), date(2026,5,15), date(2027,5,7), date(2028,4,28), date(2025,5,26), # Besluit gelijkstelling van 2 januari 2026, 15 mei 2026, 7 mei 2027, 28 april 2028 en 26 mei 2028 met een algemeen erkende feestdag
+      date(2026,1,2), date(2026,5,15), date(2027,5,7), date(2028,4,28), date(2028,5,26), # Besluit gelijkstelling van 2 januari 2026, 15 mei 2026, 7 mei 2027, 28 april 2028 en 26 mei 2028 met een algemeen erkende feestdag
       ]
     
     bereik_gelijkstelling_feestdagen = []
@@ -90,3 +83,49 @@ class Artikel3:
         bereik_gelijkstelling_feestdagen.append(dag)
 
     return bereik_gelijkstelling_feestdagen
+  
+  def _bereken_eerste_paasdag(self) -> date:
+    """
+    Berekent de datum waarop eerste paasdag valt.
+
+    Deze functie achterhaalt de datum van eerste paasdag volgens het algoritme van Gauss.
+
+    Geeft terug:
+      date
+    """
+    a = self.jaar % 19
+    b = self.jaar // 100
+    c = self.jaar % 100
+    d = b // 4
+    e = b % 4
+    f = (b + 8) // 25
+    g = (b - f + 1) // 3
+    h = (19 * a + b - d - g + 15) % 30
+    i = c // 4
+    k = c % 4
+    l = (32 + 2 * e + 2 * i - h - k) % 7
+    m = (a + 11 * h + 22 * l) // 451
+
+    maand = (h + l - 7 * m + 114) // 31
+    dag = 1 + ((h + l - 7 * m + 114) % 31)
+
+    return date(self.jaar, maand, dag)
+  
+  def _bereken_koningsdag(self) -> date:
+    """
+    Berekent de datum waarop Koningsdag valt.
+
+    Deze functie achterhaalt de datum van Koningsdag.
+
+    Geeft terug:
+      date
+    """
+    if self.jaar < 2014:
+      koningsdag = date(self.jaar, 4, 30)
+    elif  self.jaar >= 2014: 
+      koningsdag = date(self.jaar, 4, 27)
+
+    if koningsdag.weekday() == 6:
+      koningsdag -= timedelta(days=1)
+    
+    return koningsdag
