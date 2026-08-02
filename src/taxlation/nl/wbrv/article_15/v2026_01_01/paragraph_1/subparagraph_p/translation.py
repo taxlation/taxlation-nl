@@ -28,4 +28,5 @@ class Artikel15Lid1OnderdeelP:
        ):
       return True
     else:
+      
       return False
