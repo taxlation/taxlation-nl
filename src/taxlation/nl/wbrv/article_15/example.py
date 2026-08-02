@@ -1,22 +1,57 @@
-# import atw package
+# import package
+from datetime import date
 from taxlation.nl import wbrv
 
-art_15_1_p_voorbeeld= wbrv.Artikel15(
+art_15_voorbeeld= wbrv.Artikel15(
     woning= True, 
-    rechten_woning_onderworpen= False, 
-    rechten_lidmaatschap_woning= False,
     
     natuurlijk_persoon= True,
     leeftijd= 34,
 
-    vrijstelling_niet_toegepast= True,
+    vrijstelling_eerder_toegepast= False,
     verklaring_vrijstelling= True,
 
-    woning_hoofdverblijf= True,
+    woning_tijdelijk_hoofdverblijf= False,
+    verklaring_hoofdverblijf= True,
+    
+    waarde_woning= 510000,
+    waarde_aanhorigheden= 5000 
+)
+print("Startersvrijstelling artikel 15,:", art_15_voorbeeld.lid_1)
+
+art_15_1_voorbeeld= wbrv.Artikel15Lid1(datum_toepassing= date(2025,1,1),
+    rechten_lidmaatschap_woning= True,
+    aanhorigheid = True,
+    
+    natuurlijk_persoon= True,
+    leeftijd= 34,
+
+    vrijstelling_eerder_toegepast= False,
+    verklaring_vrijstelling= True,
+
+    woning_tijdelijk_hoofdverblijf= False,
+    verklaring_hoofdverblijf= True,
+    
+    waarde_woning= 520000,
+    waarde_aanhorigheden= 5000 
+)
+
+print("Startersvrijstelling artikel 15, lid 1:", art_15_1_voorbeeld.startersvrijstelling())
+
+Article_15_1_p_voorbeeld= wbrv.Artikel15Lid1OnderdeelP(
+    woning= True, 
+    
+    natuurlijk_persoon= True,
+    leeftijd= 34,
+
+    vrijstelling_eerder_toegepast= False,
+    verklaring_vrijstelling= True,
+
+    woning_tijdelijk_hoofdverblijf= False,
     verklaring_hoofdverblijf= True,
     
     waarde_woning= 510000,
     waarde_aanhorigheden= 5000 
 )
 
-print("Startersvrijstelling:", art_15_1_p_voorbeeld.lid_1)
+print("Startersvrijstelling artikel 15, lid 1, onderdeel p:", Article_15_1_p_voorbeeld.startersvrijstelling())

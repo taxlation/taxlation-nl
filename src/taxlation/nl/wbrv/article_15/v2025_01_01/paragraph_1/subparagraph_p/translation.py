@@ -24,7 +24,7 @@ class Artikel15Lid1OnderdeelP:
        (self.natuurlijk_persoon == True and self.leeftijd >= 18 and self.leeftijd < 35) and
        (self.vrijstelling_eerder_toegepast == False and self.verklaring_vrijstelling == True) and # 
         (self.woning_tijdelijk_hoofdverblijf == False and self.verklaring_hoofdverblijf == True) and 
-       ((self.waarde_woning + self.waarde_aanhorigheden) <= 555000) 
+       ((self.waarde_woning + self.waarde_aanhorigheden) <= 525000) 
        ):
       return True
     else:
