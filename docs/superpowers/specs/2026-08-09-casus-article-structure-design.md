@@ -188,6 +188,25 @@ The rule is therefore: `None` means unknown and belongs in `VEREIST`; a law-supp
 means known-by-default and does not. Any field given a non-`None` default without a legal
 justification in its comment is a bug.
 
+#### Why one `Casus` file is not the object we rejected
+
+Entities get a module each; `Casus` is a single class in a single file for the whole of
+`taxlation.nl`. That is deliberate, and it is not the per-law `Feiten` problem returning at the
+envelope level.
+
+`Casus` holds **no facts and no semantics** — one line per entity, plus the `vereist()` helper.
+It grows in length, never in complexity: at 50 entities it is roughly 70 lines of slot
+declarations. The rejected `Feiten` grew in *fields*, each carrying a legal comment, a definition
+and a semantic claim about what the law means. A manifest of slots and a bag of facts are
+different kinds of object that merely share the property of getting longer.
+
+Real cost, named rather than waved away: one shared file that every new law appends to is a
+merge-conflict hotspot. At this team size a one-line append rarely conflicts, and no mechanism is
+proposed for it until it actually hurts.
+
+Scope is per jurisdiction. This repo is `taxlation-nl`, so `nl/feiten/casus.py`. Another
+jurisdiction gets its own `Casus`; nothing is shared across them.
+
 #### Keeping entities from sprawling
 
 Current size: **35 fields across 8 entities for 10 articles**, averaging 4.4 fields each, the
