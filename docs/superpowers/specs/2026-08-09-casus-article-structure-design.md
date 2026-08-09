@@ -409,7 +409,7 @@ forever:
 ```python
 versions={date(2025,1,1): V2025, date(2026,1,1): V2026}
 # onderdeel p repealed per 2030-01-01 — unrepresentable
-Artikel15Lid1OnderdeelP(datum_toepassing=date(2035,1,1))   # still returns V2026
+wbrv.Artikel15.Lid1.OnderdeelP(casus=Casus(datum_toepassing=date(2035,1,1)))  # still V2026
 ```
 
 There is an undocumented escape hatch — `if not callable(apply_dataclass): return
