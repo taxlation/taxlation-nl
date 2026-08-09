@@ -542,10 +542,31 @@ atw.Artikel4(casus).datum_einde_verlengde_termijn
 ```
 
 This is the article-to-article delegation listed under Deferred; the `atw` chain forces it, as
-that entry anticipated. It is legally sound rather than merely convenient — art. 4 says the law
-does **not** apply to specifically-formulated terms, so it genuinely overrides arts. 1–3, and
-art. 2 genuinely operates on the term as art. 1 leaves it. The composition order belongs to the
-legislation, not to the caller, which is why `atw_verlenging` was the wrong home for it.
+that entry anticipated. The composition order belongs to the legislation, not to the caller,
+which is why `atw_verlenging` was the wrong home for it.
+
+**That is a legal reading, and it was checked rather than assumed.** Both provisions speak of
+*een in een wet gestelde termijn* — the statutory term — and neither says "de op grond van het
+vorige artikel verlengde termijn":
+
+> Art. 1 lid 1: "Een in een wet gestelde termijn die op een zaterdag, zondag of algemeen erkende
+> feestdag eindigt, wordt verlengd tot en met de eerstvolgende dag die niet een zaterdag, zondag
+> of algemeen erkende feestdag is."
+>
+> Art. 2: "Een in een wet gestelde termijn van ten minste drie dagen wordt, zo nodig, zoveel
+> verlengd, dat daarin ten minste twee dagen voorkomen die niet een zaterdag, zondag of algemeen
+> erkende feestdag zijn."
+
+Read literally, they could be two independent rules over the same statutory term, in which case
+the compounding in `atw_verlenging` would be a caller's convention and encoding it in the
+articles would misrepresent the law. **Confirmed by the author (2026-08-09): art. 2 operates on
+the term as art. 1 leaves it, and art. 4 disapplies the ATW as a whole.** Compounding is
+therefore the legislation's own composition, and D11 records it rather than inventing it.
+
+Consequence to accept knowingly: `Artikel2(casus)` always includes art. 1, so "artikel 2 alone"
+becomes unaskable. Note the current code is already a hybrid on this point — art. 2 counts
+workdays over the *original* term window, while extending from the *accumulated* end date. That
+asymmetry is preserved.
 
 Also resolved by this: `Artikel4.wet_geldt_niet` is currently a **property with a side effect**
 — it assigns `self.verlenging_termijn = timedelta(days=0)` and `__post_init__` reads it purely
