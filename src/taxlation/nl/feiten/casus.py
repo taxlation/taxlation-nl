@@ -1,6 +1,12 @@
 from dataclasses import dataclass
 from datetime import date
 
+from .belastingmiddel import Belastingmiddel
+from .hoofdverblijf import Hoofdverblijf
+from .onroerende_zaak import OnroerendeZaak
+from .verkrijger import Verkrijger
+from .verkrijging import Verkrijging
+
 
 @dataclass
 class Casus:
@@ -13,11 +19,11 @@ class Casus:
   datum_toepassing: date | None = None  # de datum waarnaar de casus wordt beoordeeld
 
   # entiteiten worden per wet toegevoegd; wbrv opent de rij
-  verkrijger: "Verkrijger | None" = None
-  zaak: "OnroerendeZaak | None" = None
-  hoofdverblijf: "Hoofdverblijf | None" = None
-  verkrijging: "Verkrijging | None" = None
-  belastingmiddel: "Belastingmiddel | None" = None
+  verkrijger: Verkrijger | None = None
+  zaak: OnroerendeZaak | None = None
+  hoofdverblijf: Hoofdverblijf | None = None
+  verkrijging: Verkrijging | None = None
+  belastingmiddel: Belastingmiddel | None = None
 
   def _lees(self, pad: str):
     waarde = self
