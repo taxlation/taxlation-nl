@@ -3,7 +3,7 @@
 **Date:** 2026-08-09
 **Branch:** `wbrv-article`, branched from `wbrv`
 **Status:** revised after adversarial review — see Review history
-**Companion change:** a lockstep PR in `taxlation-api` (required, see Consumers)
+**Companion change:** a follow-up PR in `taxlation-api` (see Consumers)
 
 ## Problem
 
@@ -48,6 +48,12 @@ taxlation-api main     ->  taxlation-nl main
 
 **Merging this work to `develop` or `main` deploys it.** There is no separate release step.
 
+**The service has no customers.** Breaking its API is therefore acceptable and needs no
+migration window, no deprecation period and no compatibility shims. What it does *not* excuse
+is leaving the Worker broken indefinitely: the vendor step will ship whatever is on this repo's
+`develop`/`main`, so `taxlation-api` gets a follow-up PR that migrates its routes, service and
+tests. That PR does not have to land in the same moment as this one.
+
 The exact surface in use today:
 
 | Consumer | Constructs | Reads |
@@ -83,10 +89,10 @@ Repairing that test is part of the companion PR.
 | D3 | Facts live in entity objects under `nl/feiten/`, collected in a `Casus` envelope. Not per-law, not per-article. |
 | D4 | Every case-evaluating article takes exactly one constructor parameter: `casus`. |
 | D5 | `VEREIST` is derived from each **legal predicate**, not from legacy dataclass defaults, and supports disjunctive groups. Evaluating without determinate facts raises `ValueError`. |
-| D6 | Version-specific constants live at module level in each version's `translation.py`. |
+| D6 | Each version's `translation.py` is a **complete, independent implementation**. Versions may differ in logic, class set and required facts, not only in constants. No inheritance or imports between versions. |
 | D7 | `Casus` slots hold one entity each. This is a documented limitation of the current scope, not a permanent contract. |
 | D8 | All ten articles convert (`wbrv` 1, 2, 15; `awb` 6:7, 6:8, 7:10; `atw` 1, 2, 3, 4). |
-| D9 | This is a **breaking API change**, declared as such. No compatibility shims. A lockstep `taxlation-api` PR migrates both routes, the service and the tests, and must merge together with this one. |
+| D9 | This is a **breaking API change**, declared as such. No compatibility shims, no deprecation window — the service has no customers. A follow-up `taxlation-api` PR migrates its routes, service and tests. |
 | D10 | A pytest characterization suite is written against the **pre-change** code and committed before any refactoring begins. It is the oracle. |
 
 ### Why `Casus` and not a per-law `Feiten`
@@ -277,7 +283,28 @@ records the old result and asserts the new one, with the divergence listed expli
 
 ### Versioning
 
-Constants sit at module level in each version's `translation.py`:
+**Each version directory holds a complete, independent implementation of the article** (D6).
+Versions of a provision do not merely retune constants — a later version can restructure the
+lidden, add or repeal an onderdeel, change how a condition is composed, or require facts no
+earlier version needed. The design must not assume otherwise.
+
+Consequences:
+
+- **No inheritance or imports between version directories.** `v2026_01_01/translation.py` never
+  imports from `v2025_01_01/`. Duplication between versions is correct and intended: two
+  versions of a provision are two different laws that happen to share a name, and coupling them
+  means a later amendment silently rewrites history.
+- **The class set may differ per version.** `VersieArtikel` maps one class name at a time, so an
+  article whose v2030 has no `Artikel15Lid1OnderdeelP` simply omits that date from that class's
+  map. Nothing forces versions to expose the same classes.
+- **`VEREIST` is per class, therefore already per version.** A version needing a fact no other
+  version needs declares it, and no other version is affected.
+- **`Casus` entity fields are the union across all versions of all articles.** Every field is
+  optional, so a fact introduced by one version costs nothing to the others. This is why `Casus`
+  is unversioned, and why versioning it would have been wrong.
+
+Constants at module level are therefore a *convenience for the versions that happen to differ
+only by a number*, not the mechanism of versioning:
 
 ```python
 WAARDEGRENS = 525_000        # v2025_01_01
@@ -286,7 +313,8 @@ LEEFTIJD_MINIMUM = 18
 LEEFTIJD_MAXIMUM = 35        # exclusief
 ```
 
-The v2025↔v2026 difference becomes a one-line read.
+For `wbrv` article 15 this makes the v2025↔v2026 difference a one-line read. That is a pleasant
+property of this particular pair, not a goal to preserve for future versions.
 
 `Casus` is unversioned, so a version is stated exactly once, by `VersieArtikel`:
 
@@ -297,6 +325,28 @@ wbrv.Artikel15(datum_toepassing=date(2026, 1, 1), casus=c)
 `VersionedClass.__call__` is keyword-only for forwarded arguments, so `casus` passes as a
 keyword. Had `Casus` lived inside a version directory, the caller would name the version twice —
 once on the import, once on `datum_toepassing` — with nothing keeping them in agreement.
+
+#### Open question: repeal has no representation
+
+Accepting that versions differ arbitrarily exposes a gap in `core/versioning.py`. Versions carry
+a start date but no end date, and `VersionedClass.__call__` selects the last version whose date
+is `<= reference_date`, with no upper bound. A repealed provision therefore keeps answering
+forever:
+
+```python
+versions={date(2025,1,1): V2025, date(2026,1,1): V2026}
+# onderdeel p repealed per 2030-01-01 — unrepresentable
+Artikel15Lid1OnderdeelP(datum_toepassing=date(2035,1,1))   # still returns V2026
+```
+
+There is an undocumented escape hatch — `if not callable(apply_dataclass): return
+apply_dataclass` means a date can map to a non-callable, so `date(2030,1,1): None` yields `None`.
+That fails silently rather than raising, which is the wrong default for a legal answer.
+
+No article in scope is repealed, so this blocks nothing now. It is recorded because D6 makes it
+inevitable, and because "no change to `core/versioning.py`" is an assumption with a shelf life.
+Resolving it properly means either end-dated version ranges or an explicit repeal sentinel that
+raises.
 
 ### Replacing `__post_init__`
 
@@ -355,13 +405,16 @@ Before any production file is touched, on a branch off `wbrv`:
    - boundary values — `leeftijd` at 17/18/34/35, waarde at `WAARDEGRENS` and ±1, dates either
      side of each termijn;
    - version selection at, before and after each effective date, including the `ValueError`
-     when no version applies;
+     when no version applies, and **each version's logic exercised independently** — per D6 a
+     version is its own implementation, so passing tests for v2025 say nothing about v2026;
    - `None`/missing combinations for every nullable field;
    - repeated evaluation and re-reads of the same instance, which pins the behaviour that
      removing `__post_init__` mutation must preserve;
-   - each delegated entry point invoked directly, not only through its parent;
-   - a full enumeration of every currently reachable public member per class, so D9's removals
-     are an explicit diff rather than a discovery.
+   - each delegated entry point invoked directly, not only through its parent.
+
+   Not required: enumerating every reachable public member. That was justified by consumer
+   breakage, and with no customers the removed inherited members (`Artikel15.onderdeel_p`,
+   `Artikel15Lid1.startersvrijstelling`) can simply be listed in the D9 commit message.
 3. Commit this suite. It must be green against unmodified code.
 
 ### Phase 1 — refactor
@@ -372,13 +425,15 @@ the old and new behaviour asserted side by side:
 - the disjunctive-group validation change described above;
 - the members removed by D9.
 
-### Phase 2 — lockstep
+### Phase 2 — follow-up in `taxlation-api`
 
-`taxlation-api`: migrate both routes and `atw_verlenging` to build a `Casus`, repair the
-already-failing `Art_7_10` test, and run its suite green against this branch vendored in.
-`test_beslistermijn_uses_dag_unit_and_extends_over_weekend` must still return `2025-12-29`.
+Migrate both routes and `atw_verlenging` to build a `Casus`, repair the already-failing
+`Art_7_10` test, and run its suite green against this branch vendored in.
+`test_beslistermijn_uses_dag_unit_and_extends_over_weekend` must still return `2025-12-29` —
+that assertion is the oracle for the `atw` accumulation chain, and it is the one result in that
+repo worth protecting regardless of API shape.
 
-Neither PR merges alone.
+Its own PR, not gated on merging simultaneously with this one.
 
 ## Quarantined defect
 
@@ -432,7 +487,7 @@ versus intent *about the woning* — is the one most worth a second look.
 
 - Fixing the `awb` 7:10 lid 4 consent logic.
 - Article-to-article delegation beyond what the `atw` chain forces.
-- Any change to `taxlation/core/versioning.py`.
+- Any change to `taxlation/core/versioning.py`, including the repeal gap recorded above.
 - Modelling `Casus` cardinality.
 
 ## Review history
@@ -446,3 +501,14 @@ accepted; three changed decisions and one was confirmed as larger than reported.
 | Single entity slots cannot encode multi-entity cases the design itself admits | D7 kept but downgraded — scoped to the ten articles, with the limitation and a revisit trigger documented rather than the contract generalised |
 | Call-time composition silently removes existing public behaviour | Confirmed and found to be larger: `taxlation-api` routes read `.termijn_beslissing_bezwaar` and construct with flat kwargs, and the Cloudflare build auto-vendors this repo. D9 declares the break; a lockstep API PR is now required. Verified empirically — an identical break from an earlier rename has been sitting broken in `test_beslistermijn.py` |
 | `example.py` stdout comparison is not an adequate preservation oracle | Verification rewritten around a pre-change pytest characterization suite (D10), with the `awb` 7:10 defect quarantined as `xfail` instead of silently preserved |
+
+**2026-08-09 — corrections from the author, after the review.**
+
+- *The API has no customers.* D9's lockstep requirement is relaxed to a follow-up PR, and the
+  characterization suite no longer enumerates every reachable public member. The finding itself
+  stands: the break is real and `taxlation-api` still has to be migrated, just not
+  simultaneously.
+- *Versions can differ in logic, not only in constants.* D6 rewritten. Version directories are
+  independent implementations with no cross-version inheritance, the class set may vary per
+  version, and per-version logic must be tested independently. This also surfaced the repeal gap
+  in `core/versioning.py` recorded under Versioning.
