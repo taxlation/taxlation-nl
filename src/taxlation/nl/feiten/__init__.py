@@ -1,5 +1,5 @@
 from .belastingmiddel import Belastingmiddel
-from .casus import Casus
+from .casus import Casus, OnvoldoendeFeiten
 from .hoofdverblijf import Hoofdverblijf
 from .onroerende_zaak import OnroerendeZaak
 from .verkrijger import Verkrijger
@@ -10,6 +10,7 @@ __all__ = [
     "Casus",
     "Hoofdverblijf",
     "OnroerendeZaak",
+    "OnvoldoendeFeiten",
     "Verkrijger",
     "Verkrijging",
 ]

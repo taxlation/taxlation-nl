@@ -1,6 +1,16 @@
-from dataclasses import replace
-
 from taxlation.core.versioning import VersionedClass
+
+
+def _ingetrokken(naam, datum):
+  """Vervangt een genest niveau dat op datum niet (meer) bestaat door een aanroep
+  die dat expliciet meldt, zodat een ingetrokken lid nooit stilzwijgend terugvalt
+  op een oudere of nieuwere versie.
+  """
+
+  def werp(**_):
+    raise ValueError(f"{naam} bestaat niet in de versie van {datum}")
+
+  return werp
 
 
 class VersieArtikel(VersionedClass):
@@ -9,46 +19,61 @@ class VersieArtikel(VersionedClass):
   def __call__(self, *, datum_toepassing=None, casus=None, **kwargs):
     """Kiest de versie op de peildatum en bouwt de klasse.
 
-    De casus draagt de peildatum. Een artikel dat een ander artikel bevraagt geeft
-    dezelfde casus door en krijgt dus dezelfde versie, ook wanneer die aanroep pas
-    plaatsvindt nadat deze methode is teruggekeerd.
+    Met een casus komt de peildatum uitsluitend uit casus.datum_toepassing. Een
+    artikel dat een ander artikel bevraagt geeft dezelfde casus door en krijgt dus
+    dezelfde versie, ook wanneer die aanroep pas plaatsvindt nadat deze methode is
+    teruggekeerd. Twee bronnen voor één datum zouden precies dat kunnen breken.
+
+    De losse datum_toepassing hoort bij de oude aanroepstijl met platte kwargs en
+    verdwijnt zodra elk artikel een casus neemt.
     """
     if casus is None:
       return super().__call__(reference_date=datum_toepassing, **kwargs)
 
-    if (
-      datum_toepassing is not None
-      and casus.datum_toepassing is not None
-      and datum_toepassing != casus.datum_toepassing
-    ):
-      raise ValueError(
-        f"datum_toepassing ({datum_toepassing}) en casus.datum_toepassing "
-        f"({casus.datum_toepassing}) spreken elkaar tegen"
+    if datum_toepassing is not None:
+      raise TypeError(
+        "geef de peildatum mee via casus.datum_toepassing, niet als losse "
+        "datum_toepassing; twee bronnen kunnen uiteenlopen"
       )
 
-    peildatum = datum_toepassing or casus.datum_toepassing
-    if casus.datum_toepassing is None and peildatum is not None:
-      casus = replace(casus, datum_toepassing=peildatum)
-
-    return super().__call__(reference_date=peildatum, casus=casus, **kwargs)
+    return super().__call__(
+      reference_date=casus.datum_toepassing, casus=casus, **kwargs
+    )
 
   def __getattr__(self, naam):
     """Leidt de versiemap van een genest niveau af uit die van het artikel.
 
     Welke geneste klasse geldt hangt af van de peildatum, en die is pas bekend bij
-    aanroep; daarom levert dit opnieuw een VersieArtikel op. Versies die het niveau
-    niet kennen worden overgeslagen, zodat een later ingevoerd lid vanzelf een map
-    krijgt die op dat moment begint.
+    aanroep; daarom levert dit opnieuw een VersieArtikel op. Alleen een echte
+    geneste klasse wordt zo doorgeproxied: een los attribuut (zoals een VEREIST-
+    tuple) bestaat pas op de gebouwde instantie, niet op deze proxy.
+
+    De map wordt over alle versies van het artikel opgebouwd, niet alleen die
+    waarin het niveau een klasse is: een versie die het niveau niet (meer) kent
+    krijgt een aanroep die dat werpt. Zo blijft zowel een later ingevoerd als een
+    later ingetrokken lid onbereikbaar buiten zijn eigen geldigheidsbereik, in
+    plaats van dat de wet van een andere versie stilzwijgend doorwerkt.
     """
     if naam.startswith("_"):
       raise AttributeError(naam)
 
-    versies = {
+    aanwezig = {
       datum: getattr(klasse, naam)
       for datum, klasse in self._versions.items()
-      if hasattr(klasse, naam)
+      if isinstance(getattr(klasse, naam, None), type)
     }
-    if not versies:
+    if not aanwezig:
       raise AttributeError(naam)
 
-    return VersieArtikel(name=f"{self._name}.{naam}", versions=versies)
+    genest_naam = f"{self._name}.{naam}"
+    versies = {
+      datum: aanwezig.get(datum, _ingetrokken(genest_naam, datum))
+      for datum in self._versions
+    }
+
+    resultaat = VersieArtikel(name=genest_naam, versions=versies)
+    setattr(self, naam, resultaat)  # memoiseren: zelfde attribuut, zelfde object
+    return resultaat
+
+  def __repr__(self):
+    return f"VersieArtikel({self._name})"

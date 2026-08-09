@@ -6,4 +6,5 @@ class Hoofdverblijf:
   """Feiten over het gebruik van de woning als hoofdverblijf."""
 
   woning_tijdelijk_hoofdverblijf: bool | None = None
-  verklaring_hoofdverblijf: bool | None = None  # verklaard de woning anders dan tijdelijk als hoofdverblijf te gaan gebruiken
+  # verklaard de woning anders dan tijdelijk als hoofdverblijf te gaan gebruiken
+  verklaring_hoofdverblijf: bool | None = None
