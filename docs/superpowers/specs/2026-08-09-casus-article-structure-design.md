@@ -92,8 +92,10 @@ Repairing that test is part of the companion PR.
 | D6 | Each version's `translation.py` is a **complete, independent implementation**. Versions may differ in logic, class set and required facts, not only in constants. No inheritance or imports between versions. |
 | D7 | `Casus` slots hold one entity each. This is a documented limitation of the current scope, not a permanent contract. |
 | D8 | All ten articles convert (`wbrv` 1, 2, 15; `awb` 6:7, 6:8, 7:10; `atw` 1, 2, 3, 4). |
-| D9 | This is a **breaking API change**, declared as such. No compatibility shims, no deprecation window — the service has no customers. A follow-up `taxlation-api` PR migrates its routes, service and tests. |
-| D10 | A pytest characterization suite is written against the **pre-change** code and committed before any refactoring begins. It is the oracle. |
+| D9 | This is a **breaking API change**, declared as such. No compatibility shims, no deprecation window — the service has no customers. A follow-up `taxlation-api` PR migrates its routes, service and tests, and must be green before this work merges to `develop`/`main`. |
+| D10 | Frozen, implementation-independent **case vectors plus golden results generated from the pre-change code** are committed before any refactoring begins. They are the oracle; both old and new implementations run the same vectors. |
+| D11 | The `atw` chain is expressed as **article-to-article delegation** (art. 4 → art. 2 → art. 1), not as caller-threaded accumulation. |
+| D12 | `Casus` carries `datum_toepassing`, the date the case is assessed as of. It is the single source for version selection and is what makes delegated version lookups correct. |
 
 ### Why `Casus` and not a per-law `Feiten`
 
@@ -170,13 +172,28 @@ being a directory.
 | `Besluit` | `datum_bekendmaking_besluit` | awb 6:8 |
 | `Bezwaar` | `datum_aanvang_indieningstermijn`, `datum_einde_bezwaartermijn`, `commissie_ingesteld`, `datum_verzoek_verzuim`, `termijn_verzoek_verzuim`, `datum_herstel_verzuim`, `termijn_verdagen_verzocht`, `termijn_verder_uitstel_verzocht`, `instemming_alle_belanghebbenden`, `instemming_indiener`, `andere_belanghebbende_niet_geschaad`, `naleving_wettelijke_procedurevoorschriften` | awb 6:7, 7:10 |
 
-Every entity field is optional (`None` default), because no single article reads all of them.
+Entity fields default to `None`, meaning *unknown*, because no single article reads all of them.
+
+**Exception: a field whose default the law itself supplies keeps that default, and must carry a
+comment saying so.** `waarde_aanhorigheden` is the only such case in scope — it is
+`int = 0` today, because acquiring no aanhorigheden means a value of zero, which is a legal fact
+rather than an absence of one. Defaulting it to `None` would make
+`waarde_woning + waarde_aanhorigheden` raise `TypeError`, and adding it to `VEREIST` would force
+callers to state a zero the law already implies. The same reasoning applies to
+`termijn_verdagen_verzocht` and `termijn_verder_uitstel_verzocht`, which are
+`timedelta(days=0)` today, and to `WettelijkeTermijn.verlenging_termijn`.
+
+The rule is therefore: `None` means unknown and belongs in `VEREIST`; a law-supplied default
+means known-by-default and does not. Any field given a non-`None` default without a legal
+justification in its comment is a bug.
+
 `Casus` holds one optional slot per entity, and the slot name is what `VEREIST` dotted paths
 address:
 
 ```python
 @dataclass
 class Casus:
+    datum_toepassing: date | None = None      # the date the case is assessed as of (D12)
     termijn: WettelijkeTermijn | None = None
     zaak: OnroerendeZaak | None = None
     verkrijger: Verkrijger | None = None
@@ -281,6 +298,35 @@ prevent, and the same nullable-Boolean flaw that causes the `awb` 7:10 defect be
 dwelling facts silently yields `False`. After this change it raises. The characterization suite
 records the old result and asserts the new one, with the divergence listed explicitly.
 
+#### Validation is eager, and deliberately over-requires
+
+`VEREIST` is checked in full before evaluation, so a case is rejected for a missing fact even
+when an earlier conjunct already settles the outcome — `natuurlijk_persoon=False` makes the
+startersvrijstelling determinately `False`, yet an unknown `waarde_woning` still raises.
+
+This is accepted, not overlooked. The alternative — validating lazily against the predicate's
+short-circuit structure, or modelling it as a three-valued expression tree — answers strictly
+more cases, at three costs:
+
+- **The error surface becomes evaluation-order dependent.** Which fact a user is told to supply
+  would depend on the order conjuncts happen to be written in, and reordering a condition for
+  readability would change the API's errors. For a legal engine whose source of truth is the
+  statute's wording, that couples an implementation detail to the answer.
+- **It reintroduces three-valued logic through the back door.** Determinacy-aware short-circuit
+  evaluation *is* Kleene logic; every caller and every delegating article would have to handle
+  unknown as a third state. That model was considered and rejected in favour of raising.
+- **Eager validation is closer to today's behaviour**, where required constructor fields must be
+  supplied regardless of whether an earlier field already decides the outcome.
+
+The semantics adopted are determinacy **of the inputs an article declares it needs**, not
+determinacy of the outcome. `VEREIST` answers "what must I know to apply this provision", which
+is the question the API asks, and it answers it identically no matter how the condition is
+written.
+
+The trade-off is real and worth revisiting if callers hit it in practice: an article that could
+have answered will instead demand facts. Revisit trigger — a consumer legitimately unable to
+supply a fact for a case that is already determinate.
+
 ### Versioning
 
 **Each version directory holds a complete, independent implementation of the article** (D6).
@@ -294,9 +340,13 @@ Consequences:
   imports from `v2025_01_01/`. Duplication between versions is correct and intended: two
   versions of a provision are two different laws that happen to share a name, and coupling them
   means a later amendment silently rewrites history.
-- **The class set may differ per version.** `VersieArtikel` maps one class name at a time, so an
-  article whose v2030 has no `Artikel15Lid1OnderdeelP` simply omits that date from that class's
-  map. Nothing forces versions to expose the same classes.
+- **The class set may *grow* per version. Removal is not yet supported.** `VersieArtikel` maps
+  one class name at a time, so a version introducing a new `Artikel15Lid3` just adds a map for
+  it, and nothing forces versions to expose the same classes. But a class *removed* in a later
+  version cannot be expressed by omitting the date: `VersionedClass` selects the last mapping
+  at or before the reference date, so omission keeps returning the pre-repeal class forever —
+  see the repeal gap below. Until repeal semantics exist, a provision that disappears must be
+  treated as an open question rather than modelled by omission.
 - **`VEREIST` is per class, therefore already per version.** A version needing a fact no other
   version needs declares it, and no other version is affected.
 - **`Casus` entity fields are the union across all versions of all articles.** Every field is
@@ -367,25 +417,92 @@ For `awb` 7:10 specifically:
 - `datum_einde_beslistermijn` sums the four lid properties.
 - `__post_init__` is removed.
 
-### The `atw` accumulation chain — known risk
+### The `atw` accumulation chain — contract (D11)
 
-`atw_verlenging` threads `verlenging_termijn` through three articles, each receiving the
-previous one's mutated output as its own input:
+`atw_verlenging` currently threads `verlenging_termijn` through three articles, each receiving
+the previous one's mutated output as its own input:
 
 ```
-Artikel1(...)                                     -> .verlenging_termijn
+Artikel1(...)                                               -> .verlenging_termijn
 Artikel2(..., verlenging_termijn=art_1.verlenging_termijn)  -> .verlenging_termijn
 Artikel4(..., verlenging_termijn=art_2.verlenging_termijn)  -> .datum_einde_verlengde_termijn
 ```
 
-The accumulation is built on the very mutation being removed, so this is **not** a mechanical
-conversion and it is the highest-risk part of the work. The implementation plan must choose and
-justify an explicit accumulation model — candidates: each article exposing its own *additional*
-extension with the caller summing, or an article-to-article delegation chain (see Deferred).
+Reading the actual implementations, every step is **carry-in sensitive**, so the accumulation
+model is not a free choice:
 
-Constraint: `atw_verlenging`'s result must be unchanged. The passing route test
-(`test_beslistermijn_uses_dag_unit_and_extends_over_weekend`, asserting `2025-12-29`) exercises
-this whole chain end to end and is the oracle for it.
+| Article | Effect on the running extension |
+|---|---|
+| art. 1 lid 1 | adds a day while `datum_einde + running` lands on a weekend or an `Artikel3` holiday — the loop condition reads the running total |
+| art. 1 lid 2 | **resets to zero** when `wettelijke_termijn < 0` |
+| art. 2 | when the term is ≥ 3 days, adds days until two workdays fall within it — again re-evaluating the running total each iteration |
+| art. 4 `onderdeel_a` | **resets to zero** for specifically-formulated terms (`uur`, > 90 dagen, > 12 weken, > 3 maanden, ≥ 1 jaar) |
+
+Two adds that depend on the carry-in and two resets that discard it. "Each article returns its
+own additional extension and the caller sums them" is therefore **wrong**: it cannot express the
+resets, and the adds would compute against the wrong base.
+
+**Adopted contract — each article's `verlenging_termijn` is a pure function of the case, and
+delegates to the article it builds on:**
+
+```python
+Artikel1(casus).verlenging_termijn   # base; carry-in is casus.termijn.verlenging_termijn
+Artikel2(casus).verlenging_termijn   # starts from Artikel1(casus).verlenging_termijn
+Artikel4(casus).verlenging_termijn   # 0 if onderdeel_a else Artikel2(casus).verlenging_termijn
+```
+
+The chain collapses to one call and `atw_verlenging`'s manual threading is deleted outright:
+
+```python
+atw.Artikel4(casus).datum_einde_verlengde_termijn
+```
+
+This is the article-to-article delegation listed under Deferred; the `atw` chain forces it, as
+that entry anticipated. It is legally sound rather than merely convenient — art. 4 says the law
+does **not** apply to specifically-formulated terms, so it genuinely overrides arts. 1–3, and
+art. 2 genuinely operates on the term as art. 1 leaves it. The composition order belongs to the
+legislation, not to the caller, which is why `atw_verlenging` was the wrong home for it.
+
+Also resolved by this: `Artikel4.wet_geldt_niet` is currently a **property with a side effect**
+— it assigns `self.verlenging_termijn = timedelta(days=0)` and `__post_init__` reads it purely
+for that effect. It becomes an ordinary predicate, with the reset expressed inside
+`verlenging_termijn`.
+
+Preserved as-is: art. 2 computes its start date as `einde - termijn + 1 dag` while art. 4 uses
+`einde - termijn`. That one-day inconsistency is reproduced, not corrected.
+
+#### Why delegation forces `Casus.datum_toepassing` (D12)
+
+`Artikel1.lid_1` constructs `Artikel3(jaar=...)` for the holiday list, and `Artikel3` is a
+`VersieArtikel`. Today that construction happens inside `__post_init__`, which runs **within**
+`VersionedClass.__call__`'s `context_reference_date` token scope, so the nested lookup inherits
+the caller's reference date.
+
+Lazily-evaluated properties break that. `Artikel1(casus).verlenging_termijn` is read *after*
+`__call__` returned and reset the token, so the nested `Artikel3` lookup falls back to
+`date.today()` — silently selecting a version by wall-clock time rather than by the case. Every
+delegated call in D11 has the same exposure.
+
+The reference date must therefore travel with the case rather than with a context variable:
+
+```python
+@dataclass
+class Casus:
+    datum_toepassing: date | None = None
+    ...
+
+# nl/versioning.py — VersieArtikel prefers the explicit argument, falls back to the case
+reference_date = datum_toepassing or (casus.datum_toepassing if casus else None)
+```
+
+This also closes the last place a version could be stated twice: `wbrv.Artikel15(casus=c)`
+selects its version from `c.datum_toepassing`, and delegated articles receive the same `casus`,
+so an entire evaluation is pinned to one date by construction.
+
+`nl/versioning.py` is therefore in scope. `core/versioning.py` remains untouched.
+
+Constraint: `atw_verlenging`'s result must be unchanged, and the delegated chain must be verified
+across a cross-product of branches rather than a single path — see Verification.
 
 ## Verification
 
@@ -396,11 +513,35 @@ version selection, exceptions or removed members.
 
 ### Phase 0 — build the oracle first (D10)
 
-Before any production file is touched, on a branch off `wbrv`:
+A characterization suite written against today's flat constructors would have to be rewritten in
+Phase 1, since those constructors cease to exist — which recreates the exact weakness that
+disqualified the `example.py` comparison: inputs and implementation moving together, with
+green tests proving only that both were changed consistently. Facts could be mapped onto the
+wrong entity fields and the expected outputs would still match.
+
+The oracle is therefore **data, not test code**:
+
+```
+tests/
+  vectors/<article>.json     frozen cases: facts + reference date, implementation-independent
+  golden/<article>.json      expected observations, GENERATED from the pre-change code
+  adapters/old.py            builds today's flat constructors from a vector
+  adapters/new.py            builds a Casus from the same vector
+  test_characterization.py   runs every vector through the active adapter vs golden
+  divergences.py             machine-checked allowlist of intentional differences
+```
+
+Vectors name facts in domain terms (`leeftijd`, `waarde_woning`), never in constructor terms, so
+the same file feeds both adapters. Golden results are generated once against unmodified code and
+**committed, never regenerated** — regenerating them is how a refactor certifies its own
+regression, so the plan treats any diff to `golden/` as a review-blocking change requiring a
+matching entry in `divergences.py`.
+
+Steps, before any production file is touched, on a branch off `wbrv`:
 
 1. Add `pytest` to a `dev` dependency group, matching `taxlation-api`, which already uses it.
-2. Write `tests/` characterization tests against the **current** implementation, recording what
-   it does rather than what it should do. Coverage required:
+2. Write the vectors, then generate and commit the golden results from the **current**
+   implementation, recording what it does rather than what it should do. Coverage required:
    - every legal branch of every article, true and false;
    - boundary values — `leeftijd` at 17/18/34/35, waarde at `WAARDEGRENS` and ±1, dates either
      side of each termijn;
@@ -410,30 +551,45 @@ Before any production file is touched, on a branch off `wbrv`:
    - `None`/missing combinations for every nullable field;
    - repeated evaluation and re-reads of the same instance, which pins the behaviour that
      removing `__post_init__` mutation must preserve;
-   - each delegated entry point invoked directly, not only through its parent.
+   - each delegated entry point invoked directly, not only through its parent;
+   - **the `atw` chain as a cross-product, not a path.** The single passing route assertion
+     (`2025-12-29`) covers one composition only. Required: zero and non-zero carry-in; negative
+     `wettelijke_termijn` triggering the art. 1 lid 2 reset; terms below and at art. 2's
+     three-day threshold; each `wettelijke_termijn_eenheid` either side of every art. 4
+     `onderdeel_a` boundary (90 dagen, 12 weken, 3 maanden, 1 jaar); end dates on a Saturday, a
+     Sunday, a fixed holiday, a computed holiday (Pasen, Koningsdag) and their adjacent days;
+     and year boundaries where the `Artikel3` holiday lookup changes year.
 
    Not required: enumerating every reachable public member. That was justified by consumer
    breakage, and with no customers the removed inherited members (`Artikel15.onderdeel_p`,
    `Artikel15Lid1.startersvrijstelling`) can simply be listed in the D9 commit message.
-3. Commit this suite. It must be green against unmodified code.
+3. Commit vectors, golden results and both adapters. The suite must be green against unmodified
+   code through the old adapter.
 
 ### Phase 1 — refactor
 
-The suite stays green throughout, with exactly two sanctioned diffs, each its own commit with
-the old and new behaviour asserted side by side:
+The same vectors now run through the new adapter against the **unchanged** golden file. Every
+production commit keeps that green. `golden/` is never regenerated; the only sanctioned
+differences are entries in `divergences.py`, each naming the old value, the new value and the
+decision that authorised it:
 
-- the disjunctive-group validation change described above;
+- the disjunctive-group validation change described above (was `False`, now raises);
 - the members removed by D9.
+
+A diff to `golden/` without a matching divergence entry fails the suite.
 
 ### Phase 2 — follow-up in `taxlation-api`
 
 Migrate both routes and `atw_verlenging` to build a `Casus`, repair the already-failing
 `Art_7_10` test, and run its suite green against this branch vendored in.
-`test_beslistermijn_uses_dag_unit_and_extends_over_weekend` must still return `2025-12-29` —
-that assertion is the oracle for the `atw` accumulation chain, and it is the one result in that
-repo worth protecting regardless of API shape.
+`test_beslistermijn_uses_dag_unit_and_extends_over_weekend` must still return `2025-12-29`.
 
-Its own PR, not gated on merging simultaneously with this one.
+**Merge gate.** This PR does not merge to `develop` or `main` until that migration is green
+against this branch. Having no customers removes the need for a deprecation window; it does not
+make shipping a Worker that cannot import its own library acceptable, and the already-broken
+`Art_7_10` test is evidence that an informal follow-up is not a reliable control. The two PRs
+need not merge in the same instant — the API PR must merely exist and pass first. Work on
+`wbrv-article` itself is unaffected.
 
 ## Quarantined defect
 
@@ -470,12 +626,18 @@ Noted but left alone, being behaviour-neutral: `startersvrijstelling`'s first cl
 
 ## Deferred
 
-**Cross-article inputs stay facts.** `awb` 6:7 needs `datum_aanvang_indieningstermijn`, which is
-6:8's output; `wbrv` article 1 needs `overdrachtsbelasting`, which is article 2's output. Having
-articles ask each other would mirror the law's own cross-reference graph and remove the
-duplication at its root, but it is a separate concern. This branch keeps them as facts on
-`Bezwaar` and `Belastingmiddel` and marks the seam. Note the `atw` accumulation chain may force
-this question earlier than planned.
+**Cross-article inputs stay facts, except where `atw` forces otherwise.** The `atw` chain is now
+article-to-article delegation (D11) — that entry's warning that it might force the question
+early proved correct. The remaining cases stay facts for now: `awb` 6:7 needs
+`datum_aanvang_indieningstermijn`, which is 6:8's output, and `wbrv` article 1 needs
+`overdrachtsbelasting`, which is article 2's output. They are kept on `Bezwaar` and
+`Belastingmiddel` with the seam marked.
+
+The distinction is deliberate rather than arbitrary: in `atw`, the composition order is stated by
+the legislation itself (art. 4 disapplies arts. 1–3), so encoding it in the articles is
+recording the law. For 6:7 and 6:8 the chaining is currently the *caller's* choice, and
+promoting it to delegation would assert a legal relationship this design has not verified.
+Adopt it there only after confirming the statute composes them that way.
 
 **Collections in `Casus`.** See Cardinality above for the limitation and its revisit trigger.
 
@@ -486,9 +648,11 @@ versus intent *about the woning* — is the one most worth a second look.
 ## Out of scope
 
 - Fixing the `awb` 7:10 lid 4 consent logic.
-- Article-to-article delegation beyond what the `atw` chain forces.
+- Article-to-article delegation beyond what the `atw` chain forces (D11).
 - Any change to `taxlation/core/versioning.py`, including the repeal gap recorded above.
+  `nl/versioning.py` **is** in scope, for the `Casus.datum_toepassing` fallback (D12).
 - Modelling `Casus` cardinality.
+- Lazy or three-valued predicate evaluation — see "Validation is eager".
 
 ## Review history
 
@@ -512,3 +676,20 @@ accepted; three changed decisions and one was confirmed as larger than reported.
   independent implementations with no cross-version inheritance, the class set may vary per
   version, and per-version logic must be tested independently. This also surfaced the repeal gap
   in `core/versioning.py` recorded under Versioning.
+
+**2026-08-09 — Codex adversarial review, round 2, verdict `needs-attention`, 3 high + 2 medium.**
+Four accepted, one accepted in part.
+
+| Finding | Resolution |
+|---|---|
+| D5 omits `waarde_aanhorigheden`, and flat validation over-requires conjuncts | Accepted in part. The omission was a real defect and is fixed by a stated optionality rule: `None` means unknown and belongs in `VEREIST`; a law-supplied default (`waarde_aanhorigheden = 0`) does not, and must justify itself in a comment. The over-requiring is **rejected as a change and adopted as a documented trade-off** — lazy/three-valued evaluation makes the error surface depend on the order conjuncts are written, and reintroduces the three-valued model already rejected. Revisit trigger recorded. |
+| The `atw` accumulation contract was never chosen | Accepted. D11 chooses it: article-to-article delegation, justified against the four carry-in-sensitive behaviours read out of the source. "Sum the per-article extensions" is shown to be unable to express the two resets. Verification now requires a cross-product rather than the single `2025-12-29` path. |
+| D9 lets the incompatible library deploy before its consumer migrates | Accepted. A green `taxlation-api` migration is now a merge gate for `develop`/`main`. Not simultaneous merge — the API PR must exist and pass first. |
+| D6 claims class removal works while `VersionedClass` perpetuates it | Accepted. D6 narrowed: the class set may grow; removal is unsupported until repeal semantics exist, rather than modelled by omission. |
+| D10 has no stable old-to-new comparison harness | Accepted. The oracle becomes data rather than test code: frozen implementation-independent vectors, golden results generated once from pre-change code and never regenerated, separate old/new adapters, and a machine-checked divergence allowlist. |
+
+**Discovered while resolving D11:** lazily-evaluated properties break nested version selection.
+`Artikel1.lid_1` constructs `Artikel3` inside `__post_init__` today, within
+`context_reference_date`'s token scope; as a property it would run after the token resets and
+silently fall back to `date.today()`. D12 (`Casus.datum_toepassing`) fixes this and brings
+`nl/versioning.py` into scope.
