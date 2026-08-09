@@ -277,10 +277,19 @@ Outer-class references inside method bodies (`Artikel15.Lid1.OnderdeelP`) resolv
 by which point the module-level name is bound. Nesting is what gives law-order reading; call-time
 resolution is only what permits the downward reference.
 
-**Known cost: indentation grows with the depth of the article.** Three levels is comfortable; an
-article nesting artikel → lid → onderdeel → subonderdeel puts method bodies past column 14. No
-article in scope reaches that. If one later does, the fix is to reconsider nesting for that
-article rather than to flatten the convention repo-wide.
+**Known cost: indentation grows with the depth of the article.** Measured on a full `wbrv`
+article 15 written this way — 74 lines — leaf method bodies sit at column 16, the deepest wrapped
+continuation at 28, and the longest line is 97 characters. Comfortable at three levels; an
+article nesting artikel → lid → onderdeel → subonderdeel would add four columns per level. No
+article in scope reaches that. If one later does, reconsider nesting *for that article* rather
+than flattening the convention repo-wide.
+
+What keeps this tolerable is that the bulk does not nest. Because every level holds only
+`casus: Casus`, the fact declarations — a dozen fields whose trailing legal comments run past 140
+characters — live in `nl/feiten/` at column 0, written once for every article that reads them.
+Only the delegating properties and the leaf's condition properties are nested, and those are
+short. A design keeping facts on the leaf pays the indentation cost on precisely the longest,
+comment-heaviest block in the file.
 
 **Interface change.** Today's inheritance chain means `Artikel15` also exposes `onderdeel_p()`
 and `startersvrijstelling()`, and `Artikel15Lid1` exposes `startersvrijstelling()`. Nesting plus
@@ -779,6 +788,13 @@ better than the flat-sibling structure this spec had, all adopted as D2 and D13:
   resolve — a simpler mechanism defended by a simpler claim;
 - one version map per article instead of one per class, which is what makes both
   `article_15/__init__.py` bugs unrepresentable.
+
+Jelle raised two costs of his own sketch: having to declare the `onderdeel_p` attribute after the
+nested dataclass and shape `vrijstelling()`, and the indentation. The first is an artifact of
+composition and does not arise here — every level holds only `casus: Casus`, so `onderdeel_p` is
+a two-line delegating property with no field to declare or keep in sync. The second is real and
+recorded under Article classes with measured figures; it is smaller than in his version, because
+the fact declarations that dominate the file do not nest.
 
 Not adopted: his composition, where a level holds the level below and facts live on the leaf.
 That would leave `atw` 1, 2 and 4 each redeclaring the same three fields — the duplication
