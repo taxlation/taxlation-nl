@@ -300,8 +300,8 @@ if __name__ == "__main__":
 
 - [ ] **Step 2: Confirm the tree is unmodified**
 
-Run: `git status --short src/`
-Expected: no output. **If anything under `src/` is modified, stop** — the cases would record changed behaviour rather than the baseline.
+Run: `git diff --stat src/`
+Expected: no output, i.e. zero tracked modifications. **If anything under `src/` is modified, stop** — the cases would record changed behaviour rather than the baseline. (`git status --short src/` will show the pre-existing untracked `atw/17-02-1996/` and `atw/most_recent/` WIP directories; those are unrelated and not a modification.)
 
 - [ ] **Step 3: Generate**
 
