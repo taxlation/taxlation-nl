@@ -1,6 +1,8 @@
-# import atw package
 from taxlation.nl import wbrv
+from taxlation.nl.feiten import Belastingmiddel, Casus
 
-art_1_voorbeeld= wbrv.Artikel1(overdrachtsbelasting= True, assurantiebelasting=False)
+casus = Casus(
+    belastingmiddel=Belastingmiddel(overdrachtsbelasting=True, assurantiebelasting=False),
+)
 
-print("Belasting van rechtsverkeer:", art_1_voorbeeld.belasting_van_rechtsverkeer)
+print("Belasting van rechtsverkeer:", wbrv.Artikel1(casus=casus).belasting_van_rechtsverkeer)
