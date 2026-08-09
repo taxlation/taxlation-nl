@@ -188,6 +188,39 @@ The rule is therefore: `None` means unknown and belongs in `VEREIST`; a law-supp
 means known-by-default and does not. Any field given a non-`None` default without a legal
 justification in its comment is a bug.
 
+#### Keeping entities from sprawling
+
+Current size: **35 fields across 8 entities for 10 articles**, averaging 4.4 fields each, the
+largest being `Bezwaar` at 12. The concern is what this looks like at 200 articles, and three
+rules bound it:
+
+- **Prefer more small entities over fewer large ones.** Adding an entity costs one optional
+  `Casus` slot and affects no existing article. Adding a field to an existing entity is what
+  makes it unwieldy. When an entity passes roughly 15 fields, split it or nest a sub-object
+  (`Bezwaar.termijnen`) rather than letting the flat list grow.
+- **Entities need not be universal.** "One entity per real-world thing" is scoped to *a case*. If
+  WBRV's onroerende zaak and another law's genuinely differ as legal concepts, they are different
+  things and become different entities. Nothing requires one `OnroerendeZaak` for all of Dutch
+  tax law.
+- **Size costs browsing, not usage.** Every field is optional and `VEREIST` names each
+  provision's inputs, so evaluating art. 15 touches ~12 facts whether its entities hold 12 fields
+  or 120.
+
+**The larger risk is not size but definitional drift.** A big entity is visible and merely
+annoying. Two laws quietly reusing one field name for subtly different legal notions — "woning"
+in WBRV versus "eigen woning" in Wet IB — produces wrong answers with nothing to notice. So:
+
+> A field carries exactly one legal concept. Its comment states that concept and where the law
+> defines it. A second law needing a different notion gets its own field with a name that
+> distinguishes them — never a reused one, and never a widened definition.
+
+Reusing a field is a legal claim that two provisions mean the same thing, and it must be made
+deliberately.
+
+This is an assumption, not a proof: entity size is expected to level off because the tenth law
+reading `Bezwaar` mostly reuses facts the first nine declared. Revisit trigger — an entity
+passing 15 fields, or any field whose comment needs two definitions to describe it.
+
 `Casus` holds one optional slot per entity, and the slot name is what `VEREIST` dotted paths
 address:
 
@@ -708,6 +741,9 @@ Noted but left alone, being behaviour-neutral: `startersvrijstelling`'s first cl
   nothing.
 - Entities are named after the real-world thing they describe, never after a law or an article.
 - Facts only. Derived results never enter `Casus`.
+- Prefer more small entities over fewer large ones; split or nest past ~15 fields.
+- One field, one legal concept, with its definition and source in the comment. Reusing a field
+  across laws asserts they mean the same thing.
 
 ## Deferred
 
