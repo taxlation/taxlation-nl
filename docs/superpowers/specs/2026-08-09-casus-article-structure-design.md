@@ -499,7 +499,7 @@ accepted; three changed decisions and one was confirmed as larger than reported.
 |---|---|
 | `VEREIST` derived from legacy defaults lets incomplete disjunctions become a legal `False` | D5 rewritten: membership derived from the legal predicate, disjunctive groups added, divergence from current behaviour made explicit and tested |
 | Single entity slots cannot encode multi-entity cases the design itself admits | D7 kept but downgraded — scoped to the ten articles, with the limitation and a revisit trigger documented rather than the contract generalised |
-| Call-time composition silently removes existing public behaviour | Confirmed and found to be larger: `taxlation-api` routes read `.termijn_beslissing_bezwaar` and construct with flat kwargs, and the Cloudflare build auto-vendors this repo. D9 declares the break; a lockstep API PR is now required. Verified empirically — an identical break from an earlier rename has been sitting broken in `test_beslistermijn.py` |
+| Call-time composition silently removes existing public behaviour | Confirmed and found to be larger: `taxlation-api` routes read `.termijn_beslissing_bezwaar` and construct with flat kwargs, and the Cloudflare build auto-vendors this repo. D9 declares the break; a lockstep API PR was required at the time, relaxed by the correction below. Verified empirically — an identical break from an earlier rename has been sitting broken in `test_beslistermijn.py` |
 | `example.py` stdout comparison is not an adequate preservation oracle | Verification rewritten around a pre-change pytest characterization suite (D10), with the `awb` 7:10 defect quarantined as `xfail` instead of silently preserved |
 
 **2026-08-09 — corrections from the author, after the review.**
