@@ -306,7 +306,7 @@ Expected: no output, i.e. zero tracked modifications. **If anything under `src/`
 - [ ] **Step 3: Generate**
 
 Run: `uv run python ../taxlation-nl-verificatie/genereer.py wbrv`
-Expected: `.../cases/wbrv.json: 51 cases`
+Expected: `.../cases/wbrv.json: 73 cases`
 
 - [ ] **Step 4: Sanity-check the baselines that matter**
 
@@ -393,7 +393,7 @@ def test_case(case):
 - [ ] **Step 2: Run it**
 
 Run: `uv run --with pytest pytest ../taxlation-nl-verificatie -q`
-Expected: PASS — `51 passed`
+Expected: PASS — `73 passed`
 
 - [ ] **Step 3: Prove the guard bites**
 
@@ -476,7 +476,7 @@ def test_atw4_onderdeel_c_sluit_de_wet_uit():
 - [ ] **Step 2: Run it**
 
 Run: `uv run --with pytest pytest ../taxlation-nl-verificatie -q`
-Expected: PASS — `51 passed, 3 xfailed`
+Expected: PASS — `73 passed, 3 xfailed`
 
 ---
 
@@ -622,7 +622,7 @@ __all__ = ["Casus"]
 - [ ] **Step 4: Run it to verify it passes**
 
 Run: `uv run --with pytest pytest ../taxlation-nl-verificatie -q`
-Expected: PASS — `59 passed, 3 xfailed`
+Expected: PASS — `81 passed, 3 xfailed`
 
 - [ ] **Step 5: Commit**
 
@@ -795,7 +795,7 @@ __all__ = [
 - [ ] **Step 4: Run it to verify it passes**
 
 Run: `uv run --with pytest pytest ../taxlation-nl-verificatie -q`
-Expected: PASS — `62 passed, 3 xfailed`
+Expected: PASS — `84 passed, 3 xfailed`
 
 - [ ] **Step 5: Commit**
 
@@ -934,7 +934,7 @@ class VersieArtikel(VersionedClass):
 - [ ] **Step 4: Run it to verify it passes**
 
 Run: `uv run --with pytest pytest ../taxlation-nl-verificatie -q`
-Expected: PASS — `68 passed, 3 xfailed`. The old articles pass no `casus`, so nothing changes for them.
+Expected: PASS — `90 passed, 3 xfailed`. The old articles pass no `casus`, so nothing changes for them.
 
 - [ ] **Step 5: Commit**
 
@@ -1044,7 +1044,7 @@ Append to `VersieArtikel`:
 - [ ] **Step 4: Run it to verify it passes**
 
 Run: `uv run --with pytest pytest ../taxlation-nl-verificatie -q`
-Expected: PASS — `71 passed, 3 xfailed`
+Expected: PASS — `93 passed, 3 xfailed`
 
 - [ ] **Step 5: Commit**
 
@@ -1118,10 +1118,61 @@ def bouw(case, observatie):
     return getattr(doel(casus=casus), observatie)
 ```
 
-- [ ] **Step 2: Confirm everything fails**
+- [ ] **Step 2: Pin the fact routing structurally**
+
+Outcome comparison **cannot** verify that facts land on the right entity fields. A mutation
+analysis proved it: `waarde_woning + waarde_aanhorigheden <= grens` and
+`woning or rechten_woning_onderworpen or ...` are commutative, so swapping either pair is
+literally the same function and no case can distinguish it. Assert the routing directly instead.
+
+Append to `test_wbrv.py`:
+
+```python
+def test_bouw_routeert_elk_feit_naar_het_juiste_veld():
+    """Uitkomstvergelijking kan dit niet vangen: som en of-reeks zijn commutatief,
+    dus een verwisseling van twee feiten levert dezelfde uitkomst op."""
+    feiten = {
+        "woning": True, "rechten_woning_onderworpen": False,
+        "rechten_lidmaatschap_woning": False, "aanhorigheid": True,
+        "in_nederland_gelegen": True, "onroerende_zaken": False,
+        "rechten_onroerende_zaken_onderworpen": True,
+        "waarde_woning": 111, "waarde_aanhorigheden": 222,
+        "natuurlijk_persoon": True, "leeftijd": 34,
+        "vrijstelling_eerder_toegepast": False, "verklaring_vrijstelling": True,
+        "woning_tijdelijk_hoofdverblijf": True, "verklaring_hoofdverblijf": False,
+        "verkrijging": True, "overdrachtsbelasting": True, "assurantiebelasting": False,
+    }
+    casus = maak_casus({"feiten": feiten, "datum": "2025-06-01"})
+    for pad, verwacht in {
+        "zaak.woning": True,
+        "zaak.rechten_woning_onderworpen": False,
+        "zaak.rechten_lidmaatschap_woning": False,
+        "zaak.aanhorigheid": True,
+        "zaak.in_nederland_gelegen": True,
+        "zaak.onroerende_zaken": False,
+        "zaak.rechten_onroerende_zaken_onderworpen": True,
+        "zaak.waarde_woning": 111,
+        "zaak.waarde_aanhorigheden": 222,
+        "verkrijger.natuurlijk_persoon": True,
+        "verkrijger.leeftijd": 34,
+        "verkrijger.vrijstelling_eerder_toegepast": False,
+        "verkrijger.verklaring_vrijstelling": True,
+        "hoofdverblijf.woning_tijdelijk_hoofdverblijf": True,
+        "hoofdverblijf.verklaring_hoofdverblijf": False,
+        "verkrijging.verkrijging": True,
+        "belastingmiddel.overdrachtsbelasting": True,
+        "belastingmiddel.assurantiebelasting": False,
+    }.items():
+        assert casus._lees(pad) == verwacht, pad
+```
+
+Every value is chosen so no two fields of the same entity share it, so any swap fails.
+Factor the casus construction out of `bouw()` into `maak_casus(case)` so both can use it.
+
+- [ ] **Step 3: Confirm everything fails**
 
 Run: `uv run --with pytest pytest ../taxlation-nl-verificatie/test_wbrv.py -q`
-Expected: FAIL — all 51 cases, since no article accepts `casus` yet.
+Expected: FAIL — all 73 cases, since no article accepts `casus` yet.
 
 ---
 
@@ -1525,7 +1576,7 @@ print(
 - [ ] **Step 4: Run it**
 
 Run: `uv run --with pytest pytest ../taxlation-nl-verificatie/test_wbrv.py -q -k "art15-"`
-Expected: FAIL — exactly two failures, `art15-2025-geen-enkel-woningfeit` and `art15-2026-geen-enkel-woningfeit`, which now raise where the frozen cases say `False`. All 37 other article-15 cases pass, across **both** versions and all three entry levels.
+Expected: FAIL — exactly two failures, `art15-2025-geen-enkel-woningfeit` and `art15-2026-geen-enkel-woningfeit`, which now raise where the frozen cases say `False`. All other article-15 cases pass, across **both** versions and all three entry levels.
 
 Run: `uv run python src/taxlation/nl/wbrv/article_15/example.py`
 Expected:
@@ -1633,7 +1684,7 @@ def test_art2_een_onwaar_zaakfeit_laat_de_vraag_open():
 - [ ] **Step 3: Run everything**
 
 Run: `uv run --with pytest pytest ../taxlation-nl-verificatie -q`
-Expected: PASS — `76 passed, 3 xfailed`
+Expected: PASS — `98 passed, 3 xfailed`
 
 Note the two `geen-enkel-woningfeit` cases carry three observations but only `lid_1` needs an entry: `onderdeel_p` and `startersvrijstelling` already froze as `raises`, since the old nested classes required those fields at construction.
 
@@ -1644,7 +1695,7 @@ Note the two `geen-enkel-woningfeit` cases carry three observations but only `li
 - [ ] **Step 1: Full suite**
 
 Run: `uv run --with pytest pytest ../taxlation-nl-verificatie -q`
-Expected: PASS — `76 passed, 3 xfailed`
+Expected: PASS — `98 passed, 3 xfailed`
 
 - [ ] **Step 2: Confirm the cases were never regenerated after Task 4**
 
@@ -1706,9 +1757,9 @@ route."
 
 ## Definition of done
 
-- [ ] `uv run --with pytest pytest ../taxlation-nl-verificatie -q` reports `76 passed, 3 xfailed`
+- [ ] `uv run --with pytest pytest ../taxlation-nl-verificatie -q` reports `98 passed, 3 xfailed`
 - [ ] `cases/wbrv.json` mtime predates the first `src/` change
-- [ ] `AFWIJKINGEN` holds exactly four entries, all citing D5
+- [ ] `AFWIJKINGEN` holds the D5 disjunction entries plus the `TypeError` -> `ValueError` entries, each with a stated reason
 - [ ] `pyproject.toml` is unchanged
 - [ ] Nothing from `../taxlation-nl-verificatie/` is tracked by git
 - [ ] `src/taxlation/nl/wbrv/article_15/v2026_01_01/paragraph_1/` is gone
