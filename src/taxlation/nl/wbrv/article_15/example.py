@@ -1,57 +1,26 @@
-# import package
 from datetime import date
+
 from taxlation.nl import wbrv
+from taxlation.nl.feiten import Casus, Hoofdverblijf, OnroerendeZaak, Verkrijger
 
-art_15_voorbeeld= wbrv.Artikel15(
-    woning= True, 
-    
-    natuurlijk_persoon= True,
-    leeftijd= 34,
-
-    vrijstelling_eerder_toegepast= False,
-    verklaring_vrijstelling= True,
-
-    woning_tijdelijk_hoofdverblijf= False,
-    verklaring_hoofdverblijf= True,
-    
-    waarde_woning= 510000,
-    waarde_aanhorigheden= 5000 
-)
-print("Startersvrijstelling artikel 15,:", art_15_voorbeeld.lid_1)
-
-art_15_1_voorbeeld= wbrv.Artikel15Lid1(datum_toepassing= date(2025,1,1),
-    rechten_lidmaatschap_woning= True,
-    aanhorigheid = True,
-    
-    natuurlijk_persoon= True,
-    leeftijd= 34,
-
-    vrijstelling_eerder_toegepast= False,
-    verklaring_vrijstelling= True,
-
-    woning_tijdelijk_hoofdverblijf= False,
-    verklaring_hoofdverblijf= True,
-    
-    waarde_woning= 520000,
-    waarde_aanhorigheden= 5000 
+casus = Casus(
+    datum_toepassing=date(2025, 1, 1),
+    verkrijger=Verkrijger(
+        natuurlijk_persoon=True,
+        leeftijd=34,
+        vrijstelling_eerder_toegepast=False,
+        verklaring_vrijstelling=True,
+    ),
+    zaak=OnroerendeZaak(woning=True, waarde_woning=510000, waarde_aanhorigheden=5000),
+    hoofdverblijf=Hoofdverblijf(
+        woning_tijdelijk_hoofdverblijf=False,
+        verklaring_hoofdverblijf=True,
+    ),
 )
 
-print("Startersvrijstelling artikel 15, lid 1:", art_15_1_voorbeeld.startersvrijstelling())
-
-Article_15_1_p_voorbeeld= wbrv.Artikel15Lid1OnderdeelP(
-    woning= True, 
-    
-    natuurlijk_persoon= True,
-    leeftijd= 34,
-
-    vrijstelling_eerder_toegepast= False,
-    verklaring_vrijstelling= True,
-
-    woning_tijdelijk_hoofdverblijf= False,
-    verklaring_hoofdverblijf= True,
-    
-    waarde_woning= 510000,
-    waarde_aanhorigheden= 5000 
+print("Startersvrijstelling artikel 15:", wbrv.Artikel15(casus=casus).lid_1)
+print("Artikel 15, lid 1:", wbrv.Artikel15.Lid1(casus=casus).onderdeel_p)
+print(
+    "Artikel 15, lid 1, onderdeel p:",
+    wbrv.Artikel15.Lid1.OnderdeelP(casus=casus).startersvrijstelling,
 )
-
-print("Startersvrijstelling artikel 15, lid 1, onderdeel p:", Article_15_1_p_voorbeeld.startersvrijstelling())
