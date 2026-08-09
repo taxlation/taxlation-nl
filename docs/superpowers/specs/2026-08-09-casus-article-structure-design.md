@@ -735,22 +735,46 @@ make shipping a Worker that cannot import its own library acceptable, and the al
 need not merge in the same instant — the API PR must merely exist and pass first. Work on
 `wbrv-article` itself is unaffected.
 
-## Quarantined defect
+## Quarantined defects
 
-**`awb` 7:10 lid 4** (`article7_10/v2009_10_01/translation.py:118`). `onderdeel_b` is
-`instemming_indiener and andere_belanghebbende_niet_geschaad`; when those are `None` it
-evaluates to `None`, not `False`. The `elif onderdeel_a is False and onderdeel_b is False and
-onderdeel_c is False` branch therefore almost never fires, so a requested
-`termijn_verder_uitstel` is silently granted with no consent recorded.
+Both are behaviour-changing legal questions, deliberately kept out of a restructuring branch so
+they get proper attention rather than riding along with a refactor. Each is reproduced unchanged
+and encoded as an `xfail` naming the legally correct result, so parity with a known-wrong
+conclusion stays visible rather than being silently certified.
 
-Behaviour is reproduced unchanged, but it is **not** accepted silently. The characterization
-suite encodes it as an `xfail` naming the legally correct result, so parity with a known-wrong
-conclusion is visible rather than certified. Fixing it is a separate decision.
+**`awb` 7:10 lid 4** — [issue #17](https://github.com/taxlation/taxlation-nl/issues/17).
+`onderdeel_b` is `instemming_indiener and andere_belanghebbende_niet_geschaad`; when those are
+`None` it evaluates to `None`, not `False`. The `elif onderdeel_a is False and onderdeel_b is
+False and onderdeel_c is False` branch therefore almost never fires, so a requested
+`termijn_verder_uitstel` is granted with no consent recorded. The open question is what an
+unknown consent should mean: refuse the uitstel, or refuse to answer via `VEREIST`.
+
+**`atw` artikel 4 onderdelen b and c** — [issue #16](https://github.com/taxlation/taxlation-nl/issues/16).
+The statute excludes three categories of termijn from the ATW; `wet_geldt_niet` consults only
+`onderdeel_a()`. Terms concerning bekendmaking, inwerkingtreding or buitenwerkingtreding van
+wettelijke voorschriften (b) and vrijheidsbeneming (c) are therefore extended when the law does
+not apply to them at all.
+
+This one was **found by fixing the swapped `legislation.md` files**: anyone checking artikel 4's
+implementation against its source was shown the feestdagen bepaling instead. It is the clearest
+argument for treating legal traceability as load-bearing rather than decorative.
+
+## Defect policy
+
+Fixes are allowed. The rule is that no behaviour moves *silently*:
+
+- **Behaviour-neutral cleanups** are applied inline, no ceremony. Example: `startersvrijstelling`'s
+  first clause, `(A or B or C) or ((A or B or C) and aanhorigheid)`, reduces to `(A or B or C)`.
+- **Documentation and traceability fixes** are applied inline. Done already: `atw` artikel 3 and
+  artikel 4 had each other's `legislation.md` bodies (frontmatter was correct in both).
+- **Behaviour-changing fixes** need an explicit decision, their own commit separate from the
+  restructuring, and a `divergences.py` entry recording old value, new value and the authority
+  for the change. Both currently known ones are quarantined; see Quarantined defects.
 
 ## Defects that disappear without being fixed
 
-No behaviour fix is applied by this work. Two wiring defects in `wbrv/article_15/__init__.py`
-nonetheless cease to exist, because the structure that expresses them is gone:
+Two wiring defects in `wbrv/article_15/__init__.py` cease to exist, because the structure that
+expresses them is gone:
 
 - Line 19: `Artikel15Lid1OnderdeelP` maps `date(2025,1,1)` to `v2025_01_01.Artikel15Lid1` — the
   wrong class. Its `name=` argument is also a copy-paste leftover reading `"Artikel15Lid1"`.
@@ -808,10 +832,9 @@ versus intent *about the woning* — is the one most worth a second look.
 
 ## Out of scope
 
-- **Fixing any defect.** This is a restructuring; it carries no behaviour corrections. Known
-  defects are quarantined (`awb` 7:10 lid 4) or disappear with the structure that expressed them
-  (the `article_15/__init__.py` wiring), and neither is a fix applied on purpose.
-- Fixing the `awb` 7:10 lid 4 consent logic.
+- The two quarantined legal defects (issues #16 and #17). Fixes are permitted in general, per
+  Defect policy; these two are held back deliberately so the legal decisions get their own
+  attention instead of riding along with a refactor.
 - Article-to-article delegation beyond what the `atw` chain forces (D11).
 - Any change to `taxlation/core/versioning.py`, including the repeal gap recorded above.
   `nl/versioning.py` **is** in scope, for the `Casus.datum_toepassing` fallback (D12).
