@@ -85,7 +85,7 @@ Repairing that test is part of the companion PR.
 | # | Decision |
 |---|---|
 | D1 | One `translation.py` per version directory. Article structure is expressed in the file, not the filesystem. |
-| D2 | Classes are defined in law order (artikel, then lid, then onderdeel) and delegate downward. |
+| D2 | The article tree is expressed as **nested class namespaces** — `Artikel15.Lid1.OnderdeelP` — written outer-first, so the file reads in law order and the dotted path is the legal citation. Each level delegates downward by passing the same `casus`. |
 | D3 | Facts live in entity objects under `nl/feiten/`, collected in a `Casus` envelope. Not per-law, not per-article. |
 | D4 | Every case-evaluating article takes exactly one constructor parameter: `casus`. |
 | D5 | `VEREIST` is derived from each **legal predicate**, not from legacy dataclass defaults, and supports disjunctive groups. Evaluating without determinate facts raises `ValueError`. |
@@ -96,6 +96,7 @@ Repairing that test is part of the companion PR.
 | D10 | Frozen, implementation-independent **case vectors plus golden results generated from the pre-change code** are committed before any refactoring begins. They are the oracle; both old and new implementations run the same vectors. |
 | D11 | The `atw` chain is expressed as **article-to-article delegation** (art. 4 → art. 2 → art. 1), not as caller-threaded accumulation. |
 | D12 | `Casus` carries `datum_toepassing`, the date the case is assessed as of. It is the single source for version selection and is what makes delegated version lookups correct. |
+| D13 | `VersieArtikel` gains `__getattr__`, deriving a version map for nested classes from the article's single map. Per-class version maps are no longer hand-written. |
 
 ### Why `Casus` and not a per-law `Feiten`
 
@@ -206,64 +207,86 @@ class Casus:
 
 ### Article classes
 
-Names inside method bodies resolve at call time, not at class-definition time. That lifts
-Python's base-before-subclass constraint, so classes can be written in the order the law reads.
+The article tree is the class namespace (D2). Nested classes are written outer-first, so the
+file reads in the order the law reads, and the dotted path *is* the citation —
+`Artikel15.Lid1.OnderdeelP` rather than a mangled `Artikel15Lid1OnderdeelP` that has to be
+parsed back into a legal reference.
 
 ```python
 @dataclass
 class Artikel15:
+    """Artikel 15 WBRV."""
     casus: Casus
+
+    @dataclass
+    class Lid1:
+        """Artikel 15, lid 1 WBRV."""
+        casus: Casus
+
+        @dataclass
+        class OnderdeelP:
+            """Artikel 15, lid 1, onderdeel p WBRV — startersvrijstelling."""
+            casus: Casus
+            VEREIST = (
+                ("zaak.woning", "zaak.rechten_woning_onderworpen",
+                 "zaak.rechten_lidmaatschap_woning"),          # disjunctive group
+                "verkrijger.natuurlijk_persoon",
+                "verkrijger.leeftijd",
+                "verkrijger.vrijstelling_eerder_toegepast",
+                "verkrijger.verklaring_vrijstelling",
+                "hoofdverblijf.woning_tijdelijk_hoofdverblijf",
+                "hoofdverblijf.verklaring_hoofdverblijf",
+                "zaak.waarde_woning",
+            )
+
+            @property
+            def startersvrijstelling(self) -> bool:
+                self.casus.vereist(self.VEREIST, "Artikel15.Lid1.OnderdeelP")
+                return (
+                    self._verkrijging_woning
+                    and self._verkrijger_kwalificeert
+                    and self._eenmalig_beroep
+                    and self._hoofdverblijfeis
+                    and self._binnen_waardegrens
+                )
+
+            # one private property per legal condition
+
+        @property
+        def onderdeel_p(self) -> bool:
+            return Artikel15.Lid1.OnderdeelP(self.casus).startersvrijstelling
 
     @property
     def lid_1(self) -> bool:
-        return Artikel15Lid1(self.casus).onderdeel_p
-
-
-@dataclass
-class Artikel15Lid1:
-    casus: Casus
-
-    @property
-    def onderdeel_p(self) -> bool:
-        return Artikel15Lid1OnderdeelP(self.casus).startersvrijstelling
-
-
-@dataclass
-class Artikel15Lid1OnderdeelP:
-    casus: Casus
-    VEREIST = (
-        ("zaak.woning", "zaak.rechten_woning_onderworpen",
-         "zaak.rechten_lidmaatschap_woning"),          # disjunctive group
-        "verkrijger.natuurlijk_persoon",
-        "verkrijger.leeftijd",
-        "verkrijger.vrijstelling_eerder_toegepast",
-        "verkrijger.verklaring_vrijstelling",
-        "hoofdverblijf.woning_tijdelijk_hoofdverblijf",
-        "hoofdverblijf.verklaring_hoofdverblijf",
-        "zaak.waarde_woning",
-    )
-
-    @property
-    def startersvrijstelling(self) -> bool:
-        self.casus.vereist(self.VEREIST, "Artikel15Lid1OnderdeelP")
-        return (
-            self._verkrijging_woning
-            and self._verkrijger_kwalificeert
-            and self._eenmalig_beroep
-            and self._hoofdverblijfeis
-            and self._binnen_waardegrens
-        )
-
-    # one private property per legal condition
+        return Artikel15.Lid1(self.casus).onderdeel_p
 ```
 
-Each level stays independently constructible: `Artikel15Lid1OnderdeelP(casus)` works on its own.
+Every level stays independently constructible, and each takes the same single argument:
+
+```python
+Artikel15(casus).lid_1
+Artikel15.Lid1(casus).onderdeel_p
+Artikel15.Lid1.OnderdeelP(casus).startersvrijstelling
+```
+
+Delegation passes the `casus` rather than the child object, so a caller never assembles the
+article's internal shape — it supplies the case and asks a question at whichever level it cares
+about.
+
+Outer-class references inside method bodies (`Artikel15.Lid1.OnderdeelP`) resolve at call time,
+by which point the module-level name is bound. Nesting is what gives law-order reading; call-time
+resolution is only what permits the downward reference.
+
+**Known cost: indentation grows with the depth of the article.** Three levels is comfortable; an
+article nesting artikel → lid → onderdeel → subonderdeel puts method bodies past column 14. No
+article in scope reaches that. If one later does, the fix is to reconsider nesting for that
+article rather than to flatten the convention repo-wide.
 
 **Interface change.** Today's inheritance chain means `Artikel15` also exposes `onderdeel_p()`
-and `startersvrijstelling()`, and `Artikel15Lid1` exposes `startersvrijstelling()`. Delegation
-removes those inherited members, and `startersvrijstelling` becomes a property rather than a
-method. Per D9 this is declared, not hidden; the characterization suite enumerates every
-currently reachable member so the removals are deliberate and listed.
+and `startersvrijstelling()`, and `Artikel15Lid1` exposes `startersvrijstelling()`. Nesting plus
+delegation removes those inherited members — each level exposes only its own provision — and
+`startersvrijstelling` becomes a property rather than a method. Per D9 this is declared, not
+hidden, and the removed members are listed in that commit.
 
 ### Missing-fact validation
 
@@ -501,6 +524,45 @@ so an entire evaluation is pinned to one date by construction.
 
 `nl/versioning.py` is therefore in scope. `core/versioning.py` remains untouched.
 
+#### Nested version selection (D13)
+
+`wbrv.Artikel15` is a `VersieArtikel` wrapper, not a class, so `wbrv.Artikel15.Lid1.OnderdeelP`
+needs the wrapper to proxy attribute access. It cannot resolve eagerly — which version's nested
+class to return is unknown until a `casus` supplies the date. So the proxy returns *another
+`VersieArtikel`*, mapping each date to that version's nested class, and selection still happens
+at call time:
+
+```python
+def __getattr__(self, item):
+    if item.startswith("_"):
+        raise AttributeError(item)
+    return VersieArtikel(
+        f"{self._name}.{item}",
+        {d: getattr(cls, item) for d, cls in self._versions.items() if hasattr(cls, item)},
+    )
+```
+
+Versions lacking the attribute are skipped rather than raising, which makes D6's **class-set
+growth** work by construction: a `Lid3` introduced in v2030 simply has a map starting at 2030,
+and asking for it earlier raises the existing `No version from ... on ...`. Removal remains
+unsupported for the reason recorded under the repeal gap.
+
+This replaces the current hand-written pattern, where `article_15/__init__.py` builds one
+`VersieArtikel` per class over the same dates. That duplication is exactly where both existing
+bugs live — one map points at the wrong class, and `__all__` disagrees with what is used. Under
+D13 the article declares its versions **once**:
+
+```python
+Artikel15 = VersieArtikel(name="Artikel15", versions={
+    date(2025, 1, 1): v2025_01_01.Artikel15,
+    date(2026, 1, 1): v2026_01_01.Artikel15,
+})
+```
+
+and every nested level is derived from it. Both bugs become unrepresentable rather than fixed,
+and `wbrv/__init__.py` exports one name per article instead of one per class, so `__all__` can no
+longer drift out of step with what callers use.
+
 Constraint: `atw_verlenging`'s result must be unchanged, and the delegated chain must be verified
 across a cross-product of branches rather than a single path — see Verification.
 
@@ -574,7 +636,9 @@ differences are entries in `divergences.py`, each naming the old value, the new 
 decision that authorised it:
 
 - the disjunctive-group validation change described above (was `False`, now raises);
-- the members removed by D9.
+- the members removed by D9;
+- `Artikel15Lid1OnderdeelP` at `2025-01-01`, whose golden result records today's wrong-class
+  mapping (see Fixed defects).
 
 A diff to `golden/` without a matching divergence entry fails the suite.
 
@@ -605,12 +669,18 @@ conclusion is visible rather than certified. Fixing it is a separate decision.
 
 ## Fixed defects
 
-`wbrv/article_15/__init__.py` is rewritten by this work, so two existing bugs are corrected:
+`wbrv/article_15/__init__.py` currently carries two bugs:
 
 - Line 19: `Artikel15Lid1OnderdeelP` maps `date(2025,1,1)` to `v2025_01_01.Artikel15Lid1` — the
   wrong class. Its `name=` argument is also a copy-paste leftover reading `"Artikel15Lid1"`.
 - Line 23: `__all__` omits `Artikel15Lid1OnderdeelP`, although `example.py` and
   `wbrv/__init__.py` both use it.
+
+Both are consequences of hand-writing one version map per class. D13 removes that duplication —
+the article declares its versions once and nested levels are derived — so these are not merely
+corrected but made **unrepresentable**. Note this for the characterization vectors: the current
+behaviour of `Artikel15Lid1OnderdeelP` at `2025-01-01` is *the wrong class's*, so its golden
+result records a bug. That divergence belongs in `divergences.py` with the other two.
 
 Noted but left alone, being behaviour-neutral: `startersvrijstelling`'s first clause,
 `(A or B or C) or ((A or B or C) and aanhorigheid)`, reduces to `(A or B or C)`.
@@ -687,6 +757,28 @@ Four accepted, one accepted in part.
 | D9 lets the incompatible library deploy before its consumer migrates | Accepted. A green `taxlation-api` migration is now a merge gate for `develop`/`main`. Not simultaneous merge — the API PR must exist and pass first. |
 | D6 claims class removal works while `VersionedClass` perpetuates it | Accepted. D6 narrowed: the class set may grow; removal is unsupported until repeal semantics exist, rather than modelled by omission. |
 | D10 has no stable old-to-new comparison harness | Accepted. The oracle becomes data rather than test code: frozen implementation-independent vectors, golden results generated once from pre-change code and never regenerated, separate old/new adapters, and a machine-checked divergence allowlist. |
+
+**2026-08-09 — Jelle Wallenburg's counter-proposal, adopted in part.**
+
+Jelle proposed expressing the article tree as nested class namespaces
+(`Artikel15.Lid1.OnderdeelP`), with each level composed of the one below. Three things it does
+better than the flat-sibling structure this spec had, all adopted as D2 and D13:
+
+- the dotted path is the legal citation, where `Artikel15Lid1OnderdeelP` was a mangled
+  identifier needing translation back into a reference;
+- law-order reading comes from nesting itself, rather than from an argument about when names
+  resolve — a simpler mechanism defended by a simpler claim;
+- one version map per article instead of one per class, which is what makes both
+  `article_15/__init__.py` bugs unrepresentable.
+
+Not adopted: his composition, where a level holds the level below and facts live on the leaf.
+That would leave `atw` 1, 2 and 4 each redeclaring the same three fields — the duplication
+`Casus` exists to remove — and it makes the caller assemble the article's internal shape. Levels
+therefore hold `casus` and delegate by passing it. His sketch also left `Artikel15` fieldless
+with no entry point; under D4 every level takes `casus` and is callable.
+
+Mechanics verified before adopting: full chain, both standalone levels, and nested version
+selection through the `__getattr__` proxy all behave correctly.
 
 **Discovered while resolving D11:** lazily-evaluated properties break nested version selection.
 `Artikel1.lid_1` constructs `Artikel3` inside `__post_init__` today, within
