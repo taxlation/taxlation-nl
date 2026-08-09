@@ -636,9 +636,7 @@ differences are entries in `divergences.py`, each naming the old value, the new 
 decision that authorised it:
 
 - the disjunctive-group validation change described above (was `False`, now raises);
-- the members removed by D9;
-- `Artikel15Lid1OnderdeelP` at `2025-01-01`, whose golden result records today's wrong-class
-  mapping (see Fixed defects).
+- the members removed by D9.
 
 A diff to `golden/` without a matching divergence entry fails the suite.
 
@@ -667,20 +665,28 @@ Behaviour is reproduced unchanged, but it is **not** accepted silently. The char
 suite encodes it as an `xfail` naming the legally correct result, so parity with a known-wrong
 conclusion is visible rather than certified. Fixing it is a separate decision.
 
-## Fixed defects
+## Defects that disappear without being fixed
 
-`wbrv/article_15/__init__.py` currently carries two bugs:
+No behaviour fix is applied by this work. Two wiring defects in `wbrv/article_15/__init__.py`
+nonetheless cease to exist, because the structure that expresses them is gone:
 
 - Line 19: `Artikel15Lid1OnderdeelP` maps `date(2025,1,1)` to `v2025_01_01.Artikel15Lid1` — the
   wrong class. Its `name=` argument is also a copy-paste leftover reading `"Artikel15Lid1"`.
 - Line 23: `__all__` omits `Artikel15Lid1OnderdeelP`, although `example.py` and
   `wbrv/__init__.py` both use it.
 
-Both are consequences of hand-writing one version map per class. D13 removes that duplication —
-the article declares its versions once and nested levels are derived — so these are not merely
-corrected but made **unrepresentable**. Note this for the characterization vectors: the current
-behaviour of `Artikel15Lid1OnderdeelP` at `2025-01-01` is *the wrong class's*, so its golden
-result records a bug. That divergence belongs in `divergences.py` with the other two.
+Both come from hand-writing one version map per class. D13 removes that duplication — the article
+declares its versions once and nested levels derive from it — so neither is expressible
+afterwards. This is the *absence* of the wiring, not a correction applied to it.
+
+**No golden diff results.** In v2025's file `Artikel15Lid1` inherits from
+`Artikel15Lid1OnderdeelP`, so the wrong mapping still returns an object whose
+`startersvrijstelling()` gives the identical value. The defect is in which class you receive, not
+in the legal answer. Since vectors record legal outcomes rather than class identity, the golden
+results are unchanged and no `divergences.py` entry is required.
+
+Preserving the defect deliberately would mean writing a knowingly incorrect map — adding a bug
+rather than declining to fix one — so it is not offered as an option.
 
 Noted but left alone, being behaviour-neutral: `startersvrijstelling`'s first clause,
 `(A or B or C) or ((A or B or C) and aanhorigheid)`, reduces to `(A or B or C)`.
@@ -717,6 +723,9 @@ versus intent *about the woning* — is the one most worth a second look.
 
 ## Out of scope
 
+- **Fixing any defect.** This is a restructuring; it carries no behaviour corrections. Known
+  defects are quarantined (`awb` 7:10 lid 4) or disappear with the structure that expressed them
+  (the `article_15/__init__.py` wiring), and neither is a fix applied on purpose.
 - Fixing the `awb` 7:10 lid 4 consent logic.
 - Article-to-article delegation beyond what the `atw` chain forces (D11).
 - Any change to `taxlation/core/versioning.py`, including the repeal gap recorded above.
