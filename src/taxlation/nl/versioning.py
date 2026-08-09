@@ -31,3 +31,24 @@ class VersieArtikel(VersionedClass):
       casus = replace(casus, datum_toepassing=peildatum)
 
     return super().__call__(reference_date=peildatum, casus=casus, **kwargs)
+
+  def __getattr__(self, naam):
+    """Leidt de versiemap van een genest niveau af uit die van het artikel.
+
+    Welke geneste klasse geldt hangt af van de peildatum, en die is pas bekend bij
+    aanroep; daarom levert dit opnieuw een VersieArtikel op. Versies die het niveau
+    niet kennen worden overgeslagen, zodat een later ingevoerd lid vanzelf een map
+    krijgt die op dat moment begint.
+    """
+    if naam.startswith("_"):
+      raise AttributeError(naam)
+
+    versies = {
+      datum: getattr(klasse, naam)
+      for datum, klasse in self._versions.items()
+      if hasattr(klasse, naam)
+    }
+    if not versies:
+      raise AttributeError(naam)
+
+    return VersieArtikel(name=f"{self._name}.{naam}", versions=versies)
