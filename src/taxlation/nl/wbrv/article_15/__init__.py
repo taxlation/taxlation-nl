@@ -9,14 +9,4 @@ Artikel15 = VersieArtikel(name="Artikel15", versions={
   date(2026,1,1): v2026_01_01.Artikel15,
 })
 
-Artikel15Lid1 = VersieArtikel(name="Artikel15Lid1", versions={
-  date(2025,1,1): v2025_01_01.Artikel15Lid1,
-  date(2026,1,1): v2026_01_01.Artikel15Lid1,
-})
-
-Artikel15Lid1OnderdeelP = VersieArtikel(name="Artikel15Lid1", versions={
-  date(2025,1,1): v2025_01_01.Artikel15Lid1,
-  date(2026,1,1): v2026_01_01.Artikel15Lid1OnderdeelP,
-})
-
-__all__ = ["Artikel15", "Artikel15Lid1"]
+__all__ = ["Artikel15",]

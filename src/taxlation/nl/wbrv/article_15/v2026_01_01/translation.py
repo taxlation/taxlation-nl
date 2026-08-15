@@ -3,19 +3,67 @@
 from dataclasses import dataclass
 
 #import dataclass
-from .paragraph_1.translation import Artikel15Lid1, Artikel15Lid1OnderdeelP
+# from .paragraph_1.translation import Artikel15Lid1, Artikel15Lid1OnderdeelP
 
-@dataclass
-class Artikel15(Artikel15Lid1):
-  """
-  Dataclass voor artikel 15 WBRV
-  """
+# @dataclass
+# class Artikel15(Artikel15Lid1):
+#   """
+#   Dataclass voor artikel 15 WBRV
+#   """
   
-  @property
-  def lid_1(self) -> bool:
+#   @property
+#   def lid_1(self) -> bool:
+#     """
+#     Bepaalt of de verkrijging is vrijgesteld.
+#     Geeft terug:
+#       bool
+#     """
+#     return self.onderdeel_p()
+
+
+#import datackasses module
+from dataclasses import dataclass
+
+class Artikel15:
+  """
+  Class voor artikel 15 WBRV
+  """
+
+  class Lid1:
     """
-    Bepaalt of de verkrijging is vrijgesteld.
-    Geeft terug:
-      bool
+    Class voor artikel 15, lid 1 WBRV
     """
-    return self.onderdeel_p()
+
+    @dataclass (kw_only= True)
+    class OnderdeelP:  
+      """
+      Dataclass voor artikel 15, lid 1, onderdeel p, WBRV
+      """
+      woning: bool = None # True indien sprake is van een verkrijging.
+      rechten_woning_onderworpen: bool = None # True indien sprake is van een in Nederland gelegen onroerende zaak.
+      rechten_lidmaatschap_woning: bool = None # True indien sprake is van een onroerende zaken.
+      aanhorigheid: bool  = None # True indien gelijktijdig een aanhorigheid wordt verkregen.
+      natuurlijk_persoon: bool # True indien sprake is van een natuurlijk persoon
+      leeftijd: int # Leeftijd
+      vrijstelling_eerder_toegepast: bool # True indien vrijstelling eerder is toegepast.
+      verklaring_vrijstelling: bool # True indien verklaring van verkrijger niet eerder startersvrijstelling heeft toegepast.
+      woning_tijdelijk_hoofdverblijf: bool # True indien de verkrijger de woning anders dan tijdelijk als hoofdverblijf gaat gebruiken.
+      verklaring_hoofdverblijf: bool # True indien verklaring van verkrijger de woning anders dan tijdelijk als hoofdverblijf gaat gebruiken.
+      waarde_woning: int # Waarde woning
+      waarde_aanhorigheden: int = 0 # Waarde aanhorigheid
+
+      def startersvrijstelling(self) -> bool:
+        if(((self.woning or self.rechten_woning_onderworpen or self.rechten_lidmaatschap_woning) or ((self.woning or self.rechten_woning_onderworpen or self.rechten_lidmaatschap_woning) and self.aanhorigheid)) and
+          (self.natuurlijk_persoon == True and self.leeftijd >= 18 and self.leeftijd < 35) and
+          (self.vrijstelling_eerder_toegepast == False and self.verklaring_vrijstelling == True) and # 
+            (self.woning_tijdelijk_hoofdverblijf == False and self.verklaring_hoofdverblijf == True) and 
+          ((self.waarde_woning + self.waarde_aanhorigheden) <= 545000) 
+          ):
+          return True
+        else:
+          return False
+
+    onderdeel_p: OnderdeelP
+
+    def vrijstelling(self) -> bool:
+      return self.onderdeel_p.startersvrijstelling()
