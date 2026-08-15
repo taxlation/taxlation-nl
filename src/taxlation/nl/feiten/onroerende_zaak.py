@@ -14,10 +14,11 @@ class OnroerendeZaak:
   rechten_onroerende_zaken_onderworpen: bool | None = None
   waarde_woning: int | None = None
   # geen aanhorigheid betekent nul; die waarde geeft de wet zelf. Is er wel een
-  # aanhorigheid, dan is nul geen wettelijk gegeven maar een gok: de waarde blijft
-  # onbekend totdat hij is ingevuld.
+  # aanhorigheid, of is dat onbekend, dan is nul geen wettelijk gegeven maar een gok:
+  # de waarde blijft onbekend totdat hij is ingevuld. Onbekend is niet hetzelfde als
+  # geen.
   waarde_aanhorigheden: int | None = None
 
   def __post_init__(self):
-    if self.waarde_aanhorigheden is None and not self.aanhorigheid:
+    if self.waarde_aanhorigheden is None and self.aanhorigheid is False:
       self.waarde_aanhorigheden = 0

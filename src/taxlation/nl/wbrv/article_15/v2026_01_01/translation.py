@@ -47,10 +47,11 @@ class Artikel15:
         )
 
       def _vereist(self):
-        """De waarde van een aanhorigheid telt mee in de waardegrens, dus zodra er
-        een aanhorigheid is moet die waarde bekend zijn. De standaardwaarde nul
-        geldt alleen wanneer er geen aanhorigheid is verkregen."""
-        if self.casus.zaak is not None and self.casus.zaak.aanhorigheid:
+        """De waarde van een aanhorigheid telt mee in de waardegrens, dus zodra een
+        aanhorigheid niet uitgesloten is - bevestigd, of onbekend - moet die waarde
+        bekend zijn. De standaardwaarde nul geldt alleen wanneer er geen aanhorigheid
+        is verkregen."""
+        if self.casus.zaak is not None and self.casus.zaak.aanhorigheid is not False:
           return self.VEREIST + ("zaak.waarde_aanhorigheden",)
         return self.VEREIST
 
