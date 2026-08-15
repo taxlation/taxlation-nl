@@ -2,37 +2,27 @@
 
 ## Classes
 
-### Artikel15Lid1OnderdeelP
-**Properties**
-- _woning_: Of een woning wordt verkregen (bool).
-- _rechten_woning_onderworpen_: Of rechten waaraan een woning is onderworpen wordt vrekgen (bool).
-- _rechten_lidmaatschap_woning_: Of rechten van een lidmaatschap die betrekking hebben op een woning wordt verkregen (bool).
-- _aanhorigheid_: Of gelijktijdig een tot de woning behorende aanhorigheid wordt verkregen (bool).
-- _natuurlijk_persoon_: Of de verkrijger een natuurlijk persoon is (bool).
-- _leeftijd_: Leeftijd van de verkrijger (int).
-- _vrijstelling_toegepast_: Of de verkrijger de vrijstelling eerder heeft toegepast (bool).
-- _verklaring_vrijstelling_: Of de verkrijger voorafgaand aan de verkrijging heeft verklaard de vrijstelling niet eerder te hebben toegepast (bool).
-- _woning_hoofdverblijf_: Of de verkrijger de woning anders dan tijdelijk als hoofdverblijf gaat gebruiken (bool).
-- _verklaring_hoofdverblijf_: Of de verkrijger voorafgaand aan de verkrijging heeft verklaard de woning anders dan tijdelijk als hoofdverblijf te gaan gebruiken (bool).
-- _waarde_woning_: De waarde van de woning (int).
-- _waarde_aanhorigheden_: De waarde van de bij de woning behorende aanhorigheden (int)
+### Artikel15
+- _lid_1_: Stelt vast of artikel 15, lid 1, WBRV van toepassing is (bool).
 
-**Methods**
-- _startersvrijstelling_: Stelt vast of de startersvrijstelling van toepassing is (bool).
-
-
-## Classes
-
-# wbrv - artikel 15, lid 1
-
-## Classes
-
-### Artikel15Lid1
-
-**Methods**
+### Artikel15.Lid1
 - _onderdeel_p_: Stelt vast of artikel 15, lid 1, onderdeel p, WBRV van toepassing is (bool).
 
-### Artikel15
+### Artikel15.Lid1.OnderdeelP
+- _startersvrijstelling_: Stelt vast of de startersvrijstelling van toepassing is (bool).
 
-**Methods**
-- _lid_1_: Stelt vast of artikel 15, lid 1, WBRV van toepassing is (bool).
+**Feiten** (gelezen uit de casus)
+- _zaak.woning_: Of een woning wordt verkregen (bool).
+- _zaak.rechten_woning_onderworpen_: Of rechten waaraan een woning is onderworpen worden verkregen (bool).
+- _zaak.rechten_lidmaatschap_woning_: Of rechten van een lidmaatschap die betrekking hebben op een woning worden verkregen (bool).
+- _zaak.aanhorigheid_: Of gelijktijdig een tot de woning behorende aanhorigheid wordt verkregen (bool).
+- _verkrijger.natuurlijk_persoon_: Of de verkrijger een natuurlijk persoon is (bool).
+- _verkrijger.leeftijd_: Leeftijd van de verkrijger (int).
+- _verkrijger.vrijstelling_eerder_toegepast_: Of de verkrijger de vrijstelling eerder heeft toegepast (bool).
+- _verkrijger.verklaring_vrijstelling_: Of de verkrijger voorafgaand aan de verkrijging heeft verklaard de vrijstelling niet eerder te hebben toegepast (bool).
+- _hoofdverblijf.woning_tijdelijk_hoofdverblijf_: Of de verkrijger de woning slechts tijdelijk als hoofdverblijf gaat gebruiken (bool).
+- _hoofdverblijf.verklaring_hoofdverblijf_: Of de verkrijger voorafgaand aan de verkrijging heeft verklaard de woning anders dan tijdelijk als hoofdverblijf te gaan gebruiken (bool).
+- _zaak.waarde_woning_: De waarde van de woning (int).
+- _zaak.waarde_aanhorigheden_: De waarde van de bij de woning behorende aanhorigheden (int). Standaard 0, maar alleen wanneer _zaak.aanhorigheid_ uitdrukkelijk False is; is er wel of mogelijk een aanhorigheid, dan moet de waarde worden opgegeven.
+
+De waardegrens in deze versie is € 525.000.

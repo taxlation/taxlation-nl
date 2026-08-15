@@ -1,38 +1,40 @@
-#import datackasses module
 from dataclasses import dataclass
 
+from taxlation.nl.feiten import Casus
+
+
 @dataclass
-class Artikel2:  
-  """
-  Dataclass voor artikel 2, WBRV
-  """
-  verkrijging: bool # True indien sprake is van een verkrijging.
-  in_nederland_gelegen: bool # True indien sprake is van een in Nederland gelegen onroerende zaak.
-  onroerende_zaken: bool # True indien sprake is van een onroerende zaken.
-  rechten_onroerende_zaken_onderworpen: bool # True indien sprake is van een recht waaraan een onroerende zaak is onderworpen.
+class Artikel2:
+  """Artikel 2 WBRV."""
+
+  casus: Casus
+
+  @dataclass
+  class Lid1:
+    """Artikel 2, lid 1 WBRV."""
+
+    casus: Casus
+    VEREIST = (
+      "verkrijging.verkrijging",
+      "zaak.in_nederland_gelegen",
+      ("zaak.onroerende_zaken", "zaak.rechten_onroerende_zaken_onderworpen"),
+    )
+
+    @property
+    def belastbaar_feit(self) -> bool:
+      self.casus.vereist(self.VEREIST, "Artikel2.Lid1")
+      zaak = self.casus.zaak
+      return bool(
+        self.casus.verkrijging.verkrijging
+        and zaak.in_nederland_gelegen
+        and (zaak.onroerende_zaken or zaak.rechten_onroerende_zaken_onderworpen)
+      )
+
+  @property
+  def lid_1(self) -> bool:
+    return Artikel2.Lid1(self.casus).belastbaar_feit
 
   @property
   def overdrachtsbelasting(self) -> bool:
-    """
-    Bepaalt of overdrachtsbelasting wordt geheven.
-
-    Functie geeft aan of overdrachtsbelasting wordt geheven.
-
-    Geeft terug:
-      bool
-    """
-    return self.lid_1()
-
-  def lid_1(self) -> bool:
-    """
-    Bepaalt of sprake is van een belastbaar feit.
-
-    Functie geeft aan of sprake is van een belastbaar feit.
-
-    Geeft terug:
-      bool
-    """
-    if self.verkrijging and self.in_nederland_gelegen and (self.onroerende_zaken or self.rechten_onroerende_zaken_onderworpen):
-      return True
-    else:
-      return False
+    """Bepaalt of overdrachtsbelasting wordt geheven."""
+    return self.lid_1

@@ -8,3 +8,7 @@ wheels/
 
 # Virtual environments
 .venv
+
+# Onafgeronde ATW-scaffolding, bewust buiten deze branch gehouden
+src/taxlation/nl/atw/17-02-1996/
+src/taxlation/nl/atw/most_recent/
