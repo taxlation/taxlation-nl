@@ -1,7 +1,6 @@
-import functools
-from dataclasses import dataclass, is_dataclass
+from dataclasses import dataclass
 from datetime import date
-from typing import Sequence, get_args, get_origin, get_type_hints
+from typing import Sequence
 
 from .belastingmiddel import Belastingmiddel
 from .hoofdverblijf import Hoofdverblijf
@@ -12,50 +11,6 @@ from .verkrijging import Verkrijging
 
 class OnvoldoendeFeiten(ValueError):
   """De feiten laten geen uitspraak toe over deze bepaling."""
-
-
-def _zonder_none(tipe):
-  """Pakt het echte type uit een `X | None`-annotatie; andere annotaties blijven
-  ongewijzigd."""
-  if get_origin(tipe) is not None and type(None) in get_args(tipe):
-    opties = [arg for arg in get_args(tipe) if arg is not type(None)]
-    if len(opties) == 1:
-      return opties[0]
-  return tipe
-
-
-def _veldtype(klasse: type, naam: str, pad: str) -> type:
-  """Zoekt het type van naam op klasse op via de type hints van het dataclassveld;
-  werpt AttributeError als het veld niet bestaat."""
-  hints = get_type_hints(klasse)
-  if naam not in hints:
-    raise AttributeError(f"onbekend pad {pad!r}: {klasse.__name__} heeft geen veld {naam!r}")
-  return _zonder_none(hints[naam])
-
-
-def _controleer_pad(pad: str) -> None:
-  """Loopt pad af over het veldenschema van Casus; werpt AttributeError zodra het
-  pad niet kan bestaan, bijvoorbeeld door een typefout of doordat het voorbij een
-  blad (geen entiteit) doorloopt."""
-  eerste, *rest = pad.split(".")
-  tipe = _veldtype(Casus, eerste, pad)
-  for deel in rest:
-    if not is_dataclass(tipe):
-      raise AttributeError(f"onbekend pad {pad!r}: {tipe} is geen entiteit")
-    tipe = _veldtype(tipe, deel, pad)
-
-
-@functools.lru_cache
-def _controleer_namen(namen: tuple) -> None:
-  """Valideert elk pad in namen tegen het veldenschema van Casus.
-
-  VEREIST-tuples zijn klasse-constanten die per artikel bevroren zijn, dus levert
-  cachen op de tuple zelf herhaalde evaluatie (elke keer dat de bepaling wordt
-  getoetst) gratis op.
-  """
-  for naam in namen:
-    for pad in (naam if isinstance(naam, tuple) else (naam,)):
-      _controleer_pad(pad)
 
 
 @dataclass(kw_only=True)
@@ -91,8 +46,6 @@ class Casus:
     """
     if isinstance(namen, str):
       raise TypeError("namen moet een sequence van paden zijn, geen losse string")
-
-    _controleer_namen(tuple(namen))
 
     ontbreekt = []
     for naam in namen:
