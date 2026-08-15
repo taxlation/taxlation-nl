@@ -36,6 +36,16 @@ class VersieArtikel(VersionedClass):
         "datum_toepassing; twee bronnen kunnen uiteenlopen"
       )
 
+    if casus.datum_toepassing is None:
+      # Een casus zonder peildatum mag nooit stilzwijgend op de wandklok
+      # terugvallen (dat is precies waarom de peildatum op de casus staat in
+      # plaats van impliciet): een juridisch antwoord zonder vaste peildatum is
+      # geen antwoord.
+      raise ValueError(
+        "casus.datum_toepassing is niet gezet; de peildatum moet op de casus "
+        "staan voordat een artikel kan worden toegepast"
+      )
+
     return super().__call__(
       reference_date=casus.datum_toepassing, casus=casus, **kwargs
     )
