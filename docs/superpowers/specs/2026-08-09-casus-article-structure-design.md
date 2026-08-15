@@ -93,7 +93,7 @@ Repairing that test is part of the companion PR.
 | D7 | `Casus` slots hold one entity each. This is a documented limitation of the current scope, not a permanent contract. |
 | D8 | All ten articles convert (`wbrv` 1, 2, 15; `awb` 6:7, 6:8, 7:10; `atw` 1, 2, 3, 4). |
 | D9 | This is a **breaking API change**, declared as such. No compatibility shims, no deprecation window — the service has no customers. A follow-up `taxlation-api` PR migrates its routes, service and tests, and must be green before this work merges to `develop`/`main`. |
-| D10 | Frozen, implementation-independent **case vectors plus golden results generated from the pre-change code** are committed before any refactoring begins. They are the oracle; both old and new implementations run the same vectors. |
+| D10 | Frozen cases holding inputs **and** the outputs the pre-change code produced are generated before any refactoring begins, and never regenerated. They are the oracle. They live outside this repo, so the branch carries law-as-code only. |
 | D11 | The `atw` chain is expressed as **article-to-article delegation** (art. 4 → art. 2 → art. 1), not as caller-threaded accumulation. |
 | D12 | `Casus` carries `datum_toepassing`, the date the case is assessed as of. It is the single source for version selection and is what makes delegated version lookups correct. |
 | D13 | `VersieArtikel` gains `__getattr__`, deriving a version map for nested classes from the article's single map. Per-class version maps are no longer hand-written. |
@@ -176,17 +176,33 @@ being a directory.
 Entity fields default to `None`, meaning *unknown*, because no single article reads all of them.
 
 **Exception: a field whose default the law itself supplies keeps that default, and must carry a
-comment saying so.** `waarde_aanhorigheden` is the only such case in scope — it is
-`int = 0` today, because acquiring no aanhorigheden means a value of zero, which is a legal fact
-rather than an absence of one. Defaulting it to `None` would make
-`waarde_woning + waarde_aanhorigheden` raise `TypeError`, and adding it to `VEREIST` would force
-callers to state a zero the law already implies. The same reasoning applies to
-`termijn_verdagen_verzocht` and `termijn_verder_uitstel_verzocht`, which are
-`timedelta(days=0)` today, and to `WettelijkeTermijn.verlenging_termijn`.
+comment saying so.** `waarde_aanhorigheden` is the only such case in scope: acquiring no
+aanhorigheden means a value of zero, which is a legal fact rather than an absence of one. The same
+reasoning applies to `termijn_verdagen_verzocht` and `termijn_verder_uitstel_verzocht`, and to
+`WettelijkeTermijn.verlenging_termijn`.
 
 The rule is therefore: `None` means unknown and belongs in `VEREIST`; a law-supplied default
 means known-by-default and does not. Any field given a non-`None` default without a legal
 justification in its comment is a bug.
+
+**As built, the exception is narrower than first drafted, and the correction matters.** An
+earlier version declared `waarde_aanhorigheden: int = 0` unconditionally. A review showed that
+supplies the zero whenever the field is falsy — including when it is **unknown** whether an
+aanhorigheid was acquired at all — so a €520 000 woning with an unknown aanhorigheid returned
+*vrijgesteld* under the 2025 grens of €525 000, where a €6 000 aanhorigheid would have flipped it.
+That is precisely the unknown-as-false conflation this decision exists to abolish, hiding inside
+the one field it exempted.
+
+The law supplies the zero only where an aanhorigheid is **ruled out**. Unknown belongs with yes,
+not with no. So the field is `int | None = None`, `__post_init__` fills the zero only when
+`aanhorigheid is False`, and artikel 15 requires `zaak.waarde_aanhorigheden` whenever
+`aanhorigheid` is anything other than an explicit `False`. Requiring `zaak.aanhorigheid` itself
+was tried and rejected: it moved 55 of 59 cases, because most cases legitimately never mention an
+aanhorigheid at all.
+
+The general rule this yields: **a law-supplied default may only be applied on a fact that is
+known.** A default conditioned on another fact must test that fact's *identity*, never its
+truthiness.
 
 #### Why one `Casus` file is not the object we rejected
 
@@ -624,7 +640,10 @@ def __getattr__(self, item):
     )
 ```
 
-Versions lacking the attribute are skipped rather than raising, which makes D6's **class-set
+**As built this goes further than specced.** Versions lacking the attribute get a callable that
+raises, rather than being skipped, so a level *repealed* in a later version stops resolving
+instead of silently falling back to its last surviving implementation. That closes the repeal gap
+at nested level, though not for whole articles. Either way it makes D6's **class-set
 growth** work by construction: a `Lid3` introduced in v2030 simply has a map starting at 2030,
 and asking for it earlier raises the existing `No version from ... on ...`. Removal remains
 unsupported for the reason recorded under the repeal gap.
@@ -663,22 +682,37 @@ disqualified the `example.py` comparison: inputs and implementation moving toget
 green tests proving only that both were changed consistently. Facts could be mapped onto the
 wrong entity fields and the expected outputs would still match.
 
-The oracle is therefore **data, not test code**:
+The oracle is therefore **data, not test code**.
+
+**As built it is simpler than this section first described, and lives outside the repo.** Two
+corrections were made during execution and are recorded here because the shape below is what
+exists:
+
+- *No adapter layer.* The first draft had `adapters/old.py` and `adapters/new.py` so one test
+  could drive both implementations. Both would import the same working tree, so the moment an
+  article converts its pre-change form no longer exists — the capability the machinery was built
+  for was never real. What actually provides the guarantee is the frozen file; the old code never
+  needs to run again. One `bouw()` helper replaces both adapters.
+- *Outside the repo.* The branch must carry law-as-code only, so the harness is a sibling git
+  repository and `pyproject.toml` gains nothing. pytest is injected per command with
+  `uv run --with pytest`.
 
 ```
-tests/
-  vectors/<article>.json     frozen cases: facts + reference date, implementation-independent
-  golden/<article>.json      expected observations, GENERATED from the pre-change code
-  adapters/old.py            builds today's flat constructors from a vector
-  adapters/new.py            builds a Casus from the same vector
-  test_characterization.py   runs every vector through the active adapter vs golden
-  divergences.py             machine-checked allowlist of intentional differences
+../taxlation-nl-verificatie/          separate git repo, never committed to this one
+  cases/wbrv.json      frozen: facts + peildatum + the outputs the pre-change code produced
+  genereer.py          one-shot generator; refuses to overwrite without --herbouw
+  routing.py           where each observation sits, one source
+  toon.py              observation -> stable string, exception type included
+  test_wbrv.py         bouw() + AFWIJKINGEN + the parametrised cases
+  test_feiten.py, test_versioning.py, test_gequarantaineerd.py
 ```
 
-Vectors name facts in domain terms (`leeftijd`, `waarde_woning`), never in constructor terms, so
-the same file feeds both adapters. Golden results are generated once against unmodified code and
+Run it from the repo root: `uv run --with pytest pytest ../taxlation-nl-verificatie -q`
+
+Cases name facts in domain terms (`leeftijd`, `waarde_woning`), never in constructor terms, so the
+same file survives the conversion. They are generated once against unmodified code and
 **committed, never regenerated** — regenerating them is how a refactor certifies its own
-regression, so the plan treats any diff to `golden/` as a review-blocking change requiring a
+regression, so any diff to `cases/` is a review-blocking change requiring a
 matching entry in `divergences.py`.
 
 Steps, before any production file is touched, on a branch off `wbrv`:
