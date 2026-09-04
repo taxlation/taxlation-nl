@@ -1,6 +1,6 @@
 # make correct version of article available
 from datetime import date
-from taxlation.nl.versioning import VersieArtikel
+from taxlation.nl.core_translation import VersieArtikel
 from .v2025_01_01 import translation as v2025_01_01
 from .v2026_01_01 import translation as v2026_01_01
 

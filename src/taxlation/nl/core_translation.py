@@ -1,4 +1,4 @@
-from taxlation.core.versioning import VersionedClass
+from taxlation.core.version import VersionedClass
 
 class VersieArtikel(VersionedClass):
   def __call__(self, *, datum_toepassing = None, **kwargs):

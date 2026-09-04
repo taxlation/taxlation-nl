@@ -1,69 +1,80 @@
-
-#import datackasses module
 from dataclasses import dataclass
+from taxlation.core.result import Result
 
-#import dataclass
-# from .paragraph_1.translation import Artikel15Lid1, Artikel15Lid1OnderdeelP
-
-# @dataclass
-# class Artikel15(Artikel15Lid1):
-#   """
-#   Dataclass voor artikel 15 WBRV
-#   """
-  
-#   @property
-#   def lid_1(self) -> bool:
-#     """
-#     Bepaalt of de verkrijging is vrijgesteld.
-#     Geeft terug:
-#       bool
-#     """
-#     return self.onderdeel_p()
-
-
-#import datackasses module
-from dataclasses import dataclass
-
+@dataclass
 class Artikel15:
   """
   Class voor artikel 15 WBRV
   """
 
+  @dataclass
   class Lid1:
     """
     Class voor artikel 15, lid 1 WBRV
     """
 
-    @dataclass (kw_only= True)
+    @dataclass
     class OnderdeelP:  
       """
       Dataclass voor artikel 15, lid 1, onderdeel p, WBRV
       """
-      woning: bool = None # True indien sprake is van een verkrijging.
-      rechten_woning_onderworpen: bool = None # True indien sprake is van een in Nederland gelegen onroerende zaak.
-      rechten_lidmaatschap_woning: bool = None # True indien sprake is van een onroerende zaken.
-      aanhorigheid: bool  = None # True indien gelijktijdig een aanhorigheid wordt verkregen.
-      natuurlijk_persoon: bool # True indien sprake is van een natuurlijk persoon
-      leeftijd: int # Leeftijd
-      vrijstelling_eerder_toegepast: bool # True indien vrijstelling eerder is toegepast.
-      verklaring_vrijstelling: bool # True indien verklaring van verkrijger niet eerder startersvrijstelling heeft toegepast.
-      woning_tijdelijk_hoofdverblijf: bool # True indien de verkrijger de woning anders dan tijdelijk als hoofdverblijf gaat gebruiken.
-      verklaring_hoofdverblijf: bool # True indien verklaring van verkrijger de woning anders dan tijdelijk als hoofdverblijf gaat gebruiken.
-      waarde_woning: int # Waarde woning
-      waarde_aanhorigheden: int = 0 # Waarde aanhorigheid
+      woning: bool # True indien sprake is van een verkrijging van een woning of van rechten van waaraan deze is onderworpen of van rechten van lidmaatschap als bedoeld in artikel 4, eerste lid , onderdeel b, voor zover deze laatste rechten betrekking hebben op een woning
+      verkrijger_natuurlijk_persoon: bool # True indien sprake is van verkrijger die natuurlijk persoon is/
+      verkrijger_leeftijd: int # Leeftijd van de verkrijger.
+      verkrijger_vrijstelling_niet_eerder_toegepast: bool # True indien vrijstelling niet eerder is toegepast.
+      verkrijger_niet_eerder_toegepast_verklaring: bool # True indien verklaring van verkrijger niet eerder startersvrijstelling heeft toegepast.
+      verkrijger_woning_hoofdverblijf: bool # True indien de verkrijger de woning anders dan tijdelijk als hoofdverblijf gaat gebruiken.
+      verkrijger_hoofdverblijf_verklaring: bool # True indien verklaring van verkrijger de woning anders dan tijdelijk als hoofdverblijf gaat gebruiken.
+      woning_waarde: int # Waarde woning.
+      aanhorigheden_waarde: int = 0 # Waarde gelijktijdige verkrijging aanhorigheden.
 
-      def startersvrijstelling(self) -> bool:
-        if(((self.woning or self.rechten_woning_onderworpen or self.rechten_lidmaatschap_woning) or ((self.woning or self.rechten_woning_onderworpen or self.rechten_lidmaatschap_woning) and self.aanhorigheid)) and
-          (self.natuurlijk_persoon == True and self.leeftijd >= 18 and self.leeftijd < 35) and
-          (self.vrijstelling_eerder_toegepast == False and self.verklaring_vrijstelling == True) and # 
-            (self.woning_tijdelijk_hoofdverblijf == False and self.verklaring_hoofdverblijf == True) and 
-          ((self.waarde_woning + self.waarde_aanhorigheden) <= 545000) 
-          ):
-          return True
+      @property
+      def verkrijging_woning(self) -> Result:
+        if (self.woning == True):
+          return Result("Artikel 15, lid 1, onderdeel p, WBRV", True, "Woning verkregen.")
         else:
-          return False
+          return Result("Artikel 15, lid 1, onderdeel p, WBRV", False, "Geen woning verkregen.")
+
+      @property
+      def subonderdeel_1(self) -> Result:
+        if (self.verkrijger_natuurlijk_persoon == True and self.verkrijger_leeftijd >= 18 and self.verkrijger_leeftijd < 35):
+          return Result("Artikel 15, lid 1, onderdeel p, subonderdeel 1, WBRV", True, "Verkrijger meerderjarig natuurlijk persoon jonger dan vijfendertig jaar.")
+        else:
+          return Result("Artikel 15, lid 1, onderdeel p, subonderdeel 1, WBRV", False, "Verkrijger geen meerderjarig natuurlijk persoon jonger dan vijfendertig jaar.")
+
+      @property
+      def subonderdeel_2(self) -> Result:
+        if (self.verkrijger_vrijstelling_niet_eerder_toegepast == True and self.verkrijger_niet_eerder_toegepast_verklaring == True):
+          return Result("Artikel 15, lid 1, onderdeel p, subonderdeel 2, WBRV", True, "Verkrijger heeft vrijstelling niet eerder toegepast en heeft dit verklaard.")
+        else:
+          return Result("Artikel 15, lid 1, onderdeel p, subonderdeel 2, WBRV", False, "Verkrijger heeft vrijstelling eerder toegepast of heeft dit niet verklaard.")
+        
+      @property
+      def subonderdeel_3(self) -> Result:
+        if (self.verkrijger_woning_hoofdverblijf == True and self.verkrijger_hoofdverblijf_verklaring == True):
+          return Result("Artikel 15, lid 1, onderdeel p, subonderdeel 3, WBRV", True, "Verkrijger gaat woning anders dan tijdelijk als hoofdverblijf gebruiken en heeft dit verklaard.")
+        else:
+          return Result("Artikel 15, lid 1, onderdeel p, subonderdeel 3, WBRV", False, "Verkrijger gaat woning niet anders dan tijdelijk als hoofdverblijf gebruiken of heeft dit niet verklaard.")
+
+      @property
+      def subonderdeel_4(self) -> Result:
+        if (self.woning_waarde + self.aanhorigheden_waarde) <= 555000:
+          return Result("Artikel 15, lid 1, onderdeel p, subonderdeel 4, WBRV", True, "Het totaal van de waarde van de woning en tot die woning behorende aanhorigheden komt niet uit boven de woningwaardegrens")
+        else:
+          return Result("Artikel 15, lid 1, onderdeel p, subonderdeel 4, WBRV", False, "Het totaal van de waarde van de woning en tot die woning behorende aanhorigheden komt uit boven de woningwaardegrens")
+
+      @property
+      def startersvrijstelling(self) -> Result:
+        if (self.verkrijging_woning and self.subonderdeel_1 and self.subonderdeel_2 and self.subonderdeel_3 and self.subonderdeel_4):
+          return Result("Artikel 15, lid 1, onderdeel p, WBRV", True, "Startersvrijstelling van toepassing", (self.verkrijging_woning, self.subonderdeel_1, self.subonderdeel_2, self.subonderdeel_3, self.subonderdeel_4))
+        else:
+          return Result("Artikel 15, lid 1, onderdeel p, WBRV", False, "Startersvrijstelling niet van toepassing", (self.verkrijging_woning, self.subonderdeel_1, self.subonderdeel_2, self.subonderdeel_3, self.subonderdeel_4))
 
     onderdeel_p: OnderdeelP
 
-    def vrijstelling(self) -> bool:
-      return self.onderdeel_p.startersvrijstelling()
+    @property
+    def vrijstelling(self) -> Result:
+      if (self.onderdeel_p.startersvrijstelling):
+        return Result("Artikel 15, lid 1, WBRV", True, "Vrijstelling van toepassing", (self.onderdeel_p.startersvrijstelling,))
+      else:
+        return Result("Artikel 15, lid 1, WBRV", False, "Geen vrijstelling van toepassing", (self.onderdeel_p.startersvrijstelling,))
